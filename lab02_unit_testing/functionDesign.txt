@@ -1,0 +1,22 @@
+#function design ->
+add (a,b) -> returns sum of two numberes
+
+#requirements
+- instant run (time efficient)
+- handle wrong inputs (e.g., strings, None)
+- shouldn't crash program
+
+#expected errors & handling
+- if input is not number -> raise TypeError or return None
+- if missing argument -> error message
+
+if both inputs = numbers -> return a + b
+if either input is non numeric -> raise TypeError("Inputs must be numbers")
+
+examples (Expected Behavior)
+- add(2, 3) -> 5 (int)
+- add(-2, -3) -> -5
+- add(2.0, 3) -> 5.0 (float)
+- add(0, 0.0) -> 0.0
+- add(True, 2) -> TypeError
+- add("2", 3) -> TypeError

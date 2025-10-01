@@ -1,0 +1,27 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -U pip
+          STATUS=0
+          for d in lab*/; do
+            if [ -f "$d/requirements.txt" ]; then
+              pip install -r "$d/requirements.txt" || exit 1
+            fi
+            if [ -d "$d/tests" ]; then
+              echo "== Running tests in $d =="
+              pytest -q "$d/tests" || STATUS=1
+            fi
+          done
+          exit $STATUS
+workflows:
+  version: 2
+  test_all:
+    jobs:
+      - test
