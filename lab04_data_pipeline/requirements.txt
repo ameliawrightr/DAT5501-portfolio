@@ -1,8 +1,8 @@
-src: keeps logic testable (no side effects on import).
-scripts: a single entrypoint to run end-to-end (for you & CI).
-tests: pytest will discover these easily.
-data/outputs: runtime artifacts so CI can store them; add to .gitignore.
+# Core deps for lab04_data_pipeline
+numpy==2.1.1
+pandas==2.2.2
+matplotlib==3.9.2
 
-- numpy & pandas (data + math)
-- matplotlib (save plots to file, headless friendly)
-- pytest (tests)
+# Test runner
+pytest==8.3.3
+
