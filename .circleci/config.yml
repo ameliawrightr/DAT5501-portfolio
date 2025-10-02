@@ -1,0 +1,14 @@
+version: 2.1
+
+jobs:
+  hello:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run: echo "CircleCI can see this repo and this config."
+
+workflows:
+  build:
+    jobs:
+      - hello
