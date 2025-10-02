@@ -1,0 +1,8 @@
+src: keeps logic testable (no side effects on import).
+scripts: a single entrypoint to run end-to-end (for you & CI).
+tests: pytest will discover these easily.
+data/outputs: runtime artifacts so CI can store them; add to .gitignore.
+
+- numpy & pandas (data + math)
+- matplotlib (save plots to file, headless friendly)
+- pytest (tests)
