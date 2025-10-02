@@ -1,14 +1,31 @@
 version: 2.1
+orbs:
+  python: circleci/python@2.1.1
 
 jobs:
-  hello:
+  lab04-data-pipeline:
     docker:
       - image: cimg/python:3.12
     steps:
       - checkout
-      - run: echo "CircleCI can see this repo and this config."
+      - python/install-packages:
+          pkg-manager: pip
+          args: -r lab04_data_pipeline/requirements.txt
+      - run:
+          name: Run pipeline (generate CSV, fit, plot)
+          command: python lab04_data_pipeline/scripts/run_pipeline.py
+      - run:
+          name: Run tests (lab-only)
+          command: pytest -q lab04_data_pipeline/tests
+      - store_artifacts:
+          path: lab04_data_pipeline/data
+          destination: lab04_data_pipeline/data
+      - store_artifacts:
+          path: lab04_data_pipeline/outputs
+          destination: lab04_data_pipeline/outputs
 
 workflows:
-  build:
+  build-test:
     jobs:
-      - hello
+      - lab04-data-pipeline
+
