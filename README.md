@@ -1,4 +1,5 @@
-# DAT5501 Portfolio (Amelia)
+# DAT5501 Portfolio 
+## Amelia Wright Rocafort 230002276
 
 This repository organises all labs for DAT5501 in **one clean place**.
 
