@@ -1,6 +1,4 @@
 version: 2.1
-orbs:
-  python: circleci/python@2.1.1
 
 jobs:
   lab04-data-pipeline:
@@ -8,9 +6,11 @@ jobs:
       - image: cimg/python:3.12
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: pip
-          args: -r lab04_data_pipeline/requirements.txt
+      - run:
+          name: Install Python deps
+          command: |
+            python -m pip install --upgrade pip
+            pip install -r lab04_data_pipeline/requirements.txt
       - run:
           name: Run pipeline (generate CSV, fit, plot)
           command: python lab04_data_pipeline/scripts/run_pipeline.py
@@ -28,4 +28,3 @@ workflows:
   build-test:
     jobs:
       - lab04-data-pipeline
-
