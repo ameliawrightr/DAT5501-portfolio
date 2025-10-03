@@ -13,7 +13,7 @@ jobs:
             python -m pip install -r lab04_data_pipeline/requirements.txt
       - run:
           name: Run pipeline (generate CSV, fit, plot) #as module so imports work
-          command: python -m lab04_data_pipeline.scripts.run_pipeline.
+          command: python -m lab04_data_pipeline.scripts.run_pipeline
       - run:
           name: Run tests (as module; consistent interpreter + path)
           command: python -m pytest -q lab04_data_pipeline/tests
