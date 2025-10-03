@@ -10,13 +10,13 @@ jobs:
           name: Install Python deps
           command: |
             python -m pip install --upgrade pip
-            pip install -r lab04_data_pipeline/requirements.txt
+            python -m pip install -r lab04_data_pipeline/requirements.txt
       - run:
-          name: Run pipeline (generate CSV, fit, plot)
-          command: python lab04_data_pipeline/scripts/run_pipeline.py
+          name: Run pipeline (generate CSV, fit, plot) #as module so imports work
+          command: python -m lab04_data_pipeline.scripts.run_pipeline.
       - run:
-          name: Run tests (lab-only)
-          command: pytest -q lab04_data_pipeline/tests
+          name: Run tests (as module; consistent interpreter + path)
+          command: python -m pytest -q lab04_data_pipeline/tests
       - store_artifacts:
           path: lab04_data_pipeline/data
           destination: lab04_data_pipeline/data
