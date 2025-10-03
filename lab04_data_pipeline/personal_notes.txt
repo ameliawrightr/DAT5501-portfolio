@@ -7,4 +7,10 @@ folder layout
 virtualenv and dependencies 
 - what: one venv for repo, per lab requirements.txt
 - why: reproducibiltiy, CI must install exactly what I use
-- 
+
+functions in src/line_pipeline.py
+1. generate_data(cfg) -> creates synthetic data and saves CSV (+ meta JSON)
+2. fit_line(csv_path) -> reads CSV, validates fit, fits a line_pipeline
+3. save_plot() -> plots scatter + true line + fitted line (saves PNG)
+
+GenConfig dataclass keeps parameters + file paths in one place
