@@ -1,8 +1,8 @@
 # Core deps for lab04_data_pipeline
-numpy==2.1.1
-pandas==2.2.2
+numpy==2.2.0
+pandas==2.2.3
 matplotlib==3.9.2
 
 # Test runner
-pytest==8.3.3
+pytest==8.4.2
 

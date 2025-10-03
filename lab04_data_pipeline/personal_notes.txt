@@ -1,0 +1,10 @@
+folder layout 
+- src/ holds pure functions
+- scripts/ holds "runnable" code which makes functions work togethers
+- tests/ verifies behaviours 
+- data/ and outputs/ are runttime artifacts
+
+virtualenv and dependencies 
+- what: one venv for repo, per lab requirements.txt
+- why: reproducibiltiy, CI must install exactly what I use
+- 
