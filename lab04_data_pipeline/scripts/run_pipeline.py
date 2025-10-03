@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import json
+import numpy as np
 
 #import pure functions + config 
 from lab04_data_pipeline.src.line_pipeline import (
@@ -20,7 +21,25 @@ def main():
 
     #3. fit the model from the CSV
     m_est, b_est, x, y = fit_line(str(csv_p))
+
+    #extra metrics 
+    #predictions from fitted line
+    y_pred = m_est * x + b_est
+    #residuals = observed vs predicted
+    residuals = y - y_pred
+
+    #RMSE = sqrt(mean(residuals^2))
+    rmse = float(np.sqrt(np.mean(residuals**2)))
+
+    #R^2 = 1 - SSR/SST
+    #SST (total sum of squares) = sum((y - mea(y))^2)
+    sst = float(np.sum((y - y.mean())**2))
+    #SSR (sum of squared residuals) = sum((y - y_pred)^2)
+    ssr = float(np.sum(residuals**2))
+    r2 = float(1 - ssr/sst) if sst > 0 else 0.0
+
     print(f"Fitted line: y = {m_est:.3f}x + {b_est:.3f}")
+    print(f"RMSE: {rmse:.4f} | R^2: {r2:.4f}")
 
     #4. load ground truth for plotting/metrics
     meta = json.loads(Path(meta_p).read_text())
@@ -37,7 +56,8 @@ def main():
         "true_m": meta["m"],
         "true_b": meta["b"],
         "est_m": m_est,
-        "est_b": b_est
+        "est_b": b_est,
+        "rmse": rmse, "r2": r2
     }, indent=2))
 
     #7. log paths (see where files went in local and CI logs)
