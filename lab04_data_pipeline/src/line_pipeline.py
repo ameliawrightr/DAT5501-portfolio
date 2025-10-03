@@ -14,7 +14,7 @@ class GenConfig:
     n: int = 200
     x_start: float = 0.0
     x_stop: float = 10.0
-    noise_signma: float = 1.0
+    noise_sigma: float = 1.0
     seed: int = 42
     #file paths - relative to repo root
     csv_path: str = "lab04_data_pipeline/data/synth.csv"
@@ -26,14 +26,14 @@ def generate_data(cfg: GenConfig):
     rng = np.random.default_rng(cfg.seed)
     x = np.linspace(cfg.x_start, cfg.x_stop, cfg.n)
     y_true = cfg.m * x + cfg.b
-    y = y_true + rng.normal(0, cfg.noise_signma, size=cfg.n)
+    y = y_true + rng.normal(0, cfg.noise_sigma, size=cfg.n)
 
     #save x, y to CSV; save cfg to JSON
     csv_p = Path(cfg.csv_path); csv_p.parent.mkdir(parents=True, exist_ok=True)
     meta_p = Path(cfg.meta_path); meta_p.parent.mkdir(parents=True, exist_ok=True)
 
     #return (csv_path, meta_path) for testing
-    pd.DataFrame({"x": x, "y": y}).to_csv(csv_path, index=False)
+    pd.DataFrame({"x": x, "y": y}).to_csv(csv_p, index=False)
     meta = {"m": cfg.m, "b": cfg.b, "n": cfg.n, "noise_sigma": cfg.noise_sigma,
             "x_start": cfg.x_start, "x_stop": cfg.x_stop, "seed": cfg.seed}
     meta_p.write_text(json.dumps(meta, indent=2))

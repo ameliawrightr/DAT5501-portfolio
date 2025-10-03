@@ -9,9 +9,11 @@ from lab04_data_pipeline.src.line_pipeline import (
 
 def test_csv_saved_and_numeric(tmp_path):
     #generate to temp locations so we don't clutter repo
-    cfg = GenConfig(csv_path=str(tmp_path/"synth.csv"),
-                    meta_path=str(tmp_path/"meta.json"),
-                    n=120, noise_signma=0.8)
+    cfg = GenConfig(
+        csv_path=str(tmp_path/"synth.csv"),
+        meta_path=str(tmp_path/"meta.json"),
+        n=120, noise_sigma=0.8
+    )
     csv_p, _meta_p = generate_data(cfg)
     assert Path(csv_p).exists(), "CSV was not saved."
 
@@ -20,23 +22,29 @@ def test_csv_saved_and_numeric(tmp_path):
     assert not df[["x", "y"]].isna().any().any(), "CSV contains NaN values."
 
 def test_fit_close_to_truth(tmp_path):
-    cfg = GenConfig(csv_path=str(tmp_path/"synth.csv"),
-                    meta_path=str(tmp_path/"meta.json"),
-                    n=300, noise_signma=0.6, seed=7, m=3.2, b=-1.5)
+    cfg = GenConfig(
+        csv_path=str(tmp_path/"synth.csv"),
+        meta_path=str(tmp_path/"meta.json"),
+        n=300, noise_sigma=0.6, seed=7, m=3.2, b=-1.5
+    )
     csv_p, meta_p = generate_data(cfg)
     m_est, b_est, *_ = fit_line(str(csv_p))
     meta = json.loads(Path(meta_p).read_text())
+    
     #tolerances chosen for noise+N
     assert np.isclose(m_est, meta["m"], atol=0.2), f"slope off: {m_est} vs {meta['m']}"
     assert np.isclose(b_est, meta["b"], atol=0.5), f"intercept off: {b_est} vs {meta['b']}"
 
 def test_plot_saved(tmp_path):
-    cfg = GenConfig(csv_path=str(tmp_path/"synth.csv"),
-                    meta_path=str(tmp_path/"meta.json"),
-                    plot_path=str(tmp_path/"fit.png"))
+    cfg = GenConfig(
+        csv_path=str(tmp_path/"synth.csv"),
+        meta_path=str(tmp_path/"meta.json"),
+        plot_path=str(tmp_path/"fit.png")
+    )
     csv_p, meta_p = generate_data(cfg)
     m_est, b_est, x, y = fit_line(str(csv_p))
     meta = json.loads(Path(meta_p).read_text())
+    
     plot_p = save_plot(x, y, meta['m'], meta['b'], m_est, b_est, out_path=cfg.plot_path)
     assert Path(plot_p).exists(), "Plot was not saved."
 

@@ -9,7 +9,7 @@ def main():
     #1. generate synthetic data
     cfg = GenConfig() #use defaults; edit if desired
     csv_p, meta_p = generate_data(cfg)
-    print(f"Generated data CSV: {csv_path}, meta JSON: {meta_path}")
+    print(f"Generated data CSV: {csv_p}, meta JSON: {meta_p}")
 
     #2. fit line to data
     m_est, b_est, x, y = fit_line(str(csv_p))
@@ -18,7 +18,7 @@ def main():
     #3. save plot of data + true line + best-fit line
     meta = json.loads(Path(meta_p).read_text())
     plot_p = save_plot(x, y, meta["m"], meta["b"], m_est, b_est, cfg.plot_path)
-    print(f"Saved line fit plot to: {plot_path}")
+    print(f"Saved line fit plot to: {plot_p}")
 
     Path("lab04_data_pipeline/outputs").mkdir(parents=True, exist_ok=True)
     Path("lab04_data_pipeline/outputs/results.json").write_text(json.dumps({
