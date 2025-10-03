@@ -5,6 +5,16 @@ Thu Oct  2 13:35:19 BST 2025
 
 # lab04_data_pipeline
 
+## Overview
+This lab demonstrates a reproducible **data pipeline** that:
+
+1. **Generates synthetic data** from a straight line `y = m*x + b` with Gaussian noise.  
+2. **Saves the dataset** as a CSV file (plus a JSON file with ground-truth parameters).  
+3. **Fits a straight line** to the data using least-squares regression.  
+4. **Saves a plot** showing the noisy data, the true line, and the best-fit line.  
+5. **Runs unit tests** to validate that the pipeline produces correct and reproducible outputs.  
+6. **Runs automatically in CI** (CircleCI), with artifacts (CSV, plot, results JSON) stored for inspection.
+
 ## What this does
 - Generate synthetic (x, y) from a true line y = m*x + b with Gaussian noise → **CSV**
 - Fit a straight line via least-squares → estimate **m**, **b**
