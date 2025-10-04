@@ -14,3 +14,12 @@ functions in src/line_pipeline.py
 3. save_plot() -> plots scatter + true line + fitted line (saves PNG)
 
 GenConfig dataclass keeps parameters + file paths in one place
+
+step 4 - design what & why
+- error bars: "per point uncertainity" sigma_y[i]
+   > use Weighted Least Squares with weights w_i = 1/sigma_y[i]^2 (Gaussian MLE)
+- outliers: OLS can be moved by random points. defences:
+   > Huber loss: softens penalty for big residuals
+   > RANSAC: repeatedly fit on random subsets, keep consensus models
+- missing/NaN: drop non finite rows 
+   > tests must confirm no crash and raise or clean deterministically
