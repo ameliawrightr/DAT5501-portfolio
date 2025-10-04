@@ -4,7 +4,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 from enum import Enum
+from typing import Optional, Union
 
 #dataclass - keeps parameters in one place 
 # - ensures reproducibility + fewer mistakes
@@ -35,8 +37,12 @@ class GenConfig:
     seed: int = 42 #RNG seed to make runs reproducible
     outdir: Path = Path("artifacts")
 
+    csv_path: Optional[Union[str, Path]] = None #if set, save CSV here
+    meta_path: Optional[Union[str, Path]] = None #if set, save JSON
+    plot_path: Optional[Union[str, Path]] = None #if set, save PNG here
 
-def generate_data(cfg: GenConfig) -> pd.DataFrame: 
+
+def generate_data(cfg: GenConfig) -> tuple[Path, Optional[Path]]: 
     #generate synthetic data from true line - y = m*x + b with Gaussian noise
     #produces:
     # - CSV with x, y columns
@@ -69,30 +75,57 @@ def generate_data(cfg: GenConfig) -> pd.DataFrame:
     if cfg.heteroscedastic:
         df["sigma_y"] = sigma_y
     
+    #always ensure outdir exists
     cfg.outdir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(cfg.outdir / "data.csv", index=False)
-    return df
+
+    #resolve output paths
+    out_csv = Path(cfg.csv_path) if cfg.csv_path is not None else (cfg.outdir / "data.csv")
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(out_csv, index=False)
+
+    out_meta = None
+    if cfg.meta_path is not None:
+        out_meta = Path(cfg.meta_path)
+        out_meta.parent.mkdir(parents=True, exist_ok=True)
+        meta = {
+            "m": cfg.m, "b": cfg.b, "n": cfg.n,
+            "noise_sigma": cfg.noise_sigma,
+            "heteroscedastic": cfg.heteroscedastic,
+            "sigma_min": cfg.sigma_min, "sigma_max": cfg.sigma_max,
+            "x_start": cfg.x_start, "x_stop": cfg.x_stop,
+            "n_outliers": cfg.n_outliers, "seed": cfg.seed
+        }
+        out_meta.write_text(json.dumps(meta, indent=2))
+
+    return out_csv, out_meta
                                    
-    #make evenly spaced x, compute noiseless y and noisy y
-    x = np.linspace(cfg.x_start, cfg.x_stop, cfg.n)
-    y_true = cfg.m * x + cfg.b
-    y = y_true + rng.normal(0, cfg.noise_sigma, size=cfg.n)
 
-
-def fit_line(df: pd.DataFrame, use_wls: bool = False, robust: Robust = Robust.NONE) -> tuple[float, float]:
+def fit_line(
+        data: Union[pd.DataFrame, str, Path],
+        use_wls: bool = False, 
+        robust: Robust = Robust.NONE,
+) -> tuple[float, float, np.ndarray, np.ndarray]:
     #fit line to data in df (x, y, optional sigma_y)
     # - use_wls=True, use weighted least squares (requires sigma_y column)
     # - robust=Huber defends against outliers
     #load CSV, ensure numeric/no-NaN, fit y = m*x + b (least squares)
     #return (m_est: float, b_est: float, x: np.ndarray, y: np.ndarray) 
     
-    #df = pd.read_csv(csv_path)
+    if isinstance(data, (str, Path)):
+        df = pd.read_csv(data)
+    else:
+        df = data
 
     if robust == Robust.HUBER:
-        return fit_line_huber(df)
-    if use_wls:
-        return fit_line_wls(df)
-    return fit_line_ols(df)
+        m_hat, b_hat = fit_line_huber(df)
+    elif use_wls:
+        m_hat, b_hat = fit_line_wls(df)
+    else:
+        m_hat, b_hat = fit_line_ols(df)
+    
+    x = df["x"].to_numpy()
+    y = df["y"].to_numpy()
+    return float(m_hat), float(b_hat), x, y
 
 
 def fit_line_ols(df: pd.DataFrame) -> tuple[float, float]:
@@ -157,10 +190,38 @@ def fit_line_huber(df: pd.DataFrame, delta: float = 1.0, max_iter: int = 50) -> 
 
     return float(m_hat), float(b_hat)
 
-def save_plot(df: pd.DataFrame, m_true: float, b_true: float, m_fit: float, b_fit: float, out_png: Path) -> Path:
+def save_plot(
+        x_or_df: Union[pd.DataFrame, np.ndarray],
+        y: Optional[np.ndarray] = None,
+        m_true: float = 0.0, b_true: float = 0.0, 
+        m_fit: float = 0.0, b_fit: float = 0.0, 
+        out_png: Optional[Union[str, Path]]=None, 
+        cfg: Optional[GenConfig] = None,
+        out_path: Optional[Union[str, Path]] = None,
+    ) -> Path:
+
+    #normalise inputs - build df from (x, y)
+    if isinstance(x_or_df, pd.DataFrame):
+        df = x_or_df
+    else:
+        if y is None:
+            raise ValueError("y must be provided when x is ndarray.")
+        df = pd.DataFrame({"x": x_or_df, "y": y})
+
+    #resolve out path priority: explicit arg > cfg.plot_path > outdir/plot.png
+    target = out_png if out_png is not None else out_path
+    if target is None:
+        if cfg is not None and cfg.plot_path is not None:
+            target = Path(cfg.plot_path)
+        elif cfg is not None:
+            target = cfg.outdir / "plot.png"
+        else:
+            target = Path("plot.png")
+    target = Path(target)
+
     #save a PNG with scatter, true line, and best-fit line
     #return saved PNG
-    out_png.parent.mkdir(parents=True, exist_ok=True)
+    target.parent.mkdir(parents=True, exist_ok=True)
     x_line = np.linspace(df["x"].min(), df["x"].max(), 200)
     y_true = m_true * x_line + b_true
     y_fit = m_fit * x_line + b_fit
@@ -178,10 +239,10 @@ def save_plot(df: pd.DataFrame, m_true: float, b_true: float, m_fit: float, b_fi
     plt.plot(x_line, y_fit, linewidth=2, linestyle="--", label="Best fit")
     plt.xlabel("x"); plt.ylabel("y"); plt.title("Line fit: true vs fitted")
     plt.legend(); plt.tight_layout()
-    plt.savefig(out_png, dpi=150)
+    plt.savefig(str(target), dpi=150)
     plt.close()
     
-    return out_png
+    return target
 
 def clean_nonfinite(df: pd.DataFrame, cols: tuple[str, ...]) -> pd.DataFrame:
     #remove rows with non-finite values (NaN, inf, -inf)
