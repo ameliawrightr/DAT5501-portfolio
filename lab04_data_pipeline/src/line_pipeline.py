@@ -1,5 +1,4 @@
 from __future__ import annotations
-import json
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
@@ -36,10 +35,6 @@ class GenConfig:
     seed: int = 42 #RNG seed to make runs reproducible
     outdir: Path = Path("artifacts")
 
-    #output file locations - relative to repo root
-    csv_path: str = "lab04_data_pipeline/data/synth.csv"
-    meta_path: str = "lab04_data_pipeline/data/meta.json"
-    plot_path: str = "lab04_data_pipeline/outputs/line_fit.png"
 
 def generate_data(cfg: GenConfig) -> pd.DataFrame: 
     #generate synthetic data from true line - y = m*x + b with Gaussian noise
@@ -75,7 +70,7 @@ def generate_data(cfg: GenConfig) -> pd.DataFrame:
         df["sigma_y"] = sigma_y
     
     cfg.outdir.mkdir(parents=True, exist_ok=True)
-    (cfg.outdir / "data.csv").write_text(df.to_csv(index=False))
+    df.to_csv(cfg.outdir / "data.csv", index=False)
     return df
                                    
     #make evenly spaced x, compute noiseless y and noisy y
@@ -83,23 +78,6 @@ def generate_data(cfg: GenConfig) -> pd.DataFrame:
     y_true = cfg.m * x + cfg.b
     y = y_true + rng.normal(0, cfg.noise_sigma, size=cfg.n)
 
-    #check folders exist before writing
-    csv_p = Path(cfg.csv_path); csv_p.parent.mkdir(parents=True, exist_ok=True)
-    meta_p = Path(cfg.meta_path); meta_p.parent.mkdir(parents=True, exist_ok=True)
-
-    #write dataset to CSV
-    pd.DataFrame({"x": x, "y": y}).to_csv(csv_p, index=False)
-
-    #also save true parameters to JSON meta file
-    meta = {
-        "m": cfg.m, "b": cfg.b, "n": cfg.n, 
-        "noise_sigma": cfg.noise_sigma,
-        "x_start": cfg.x_start, "x_stop": cfg.x_stop, 
-        "seed": cfg.seed
-    }
-    meta_p.write_text(json.dumps(meta, indent=2))
-
-    return csv_p, meta_p
 
 def fit_line(df: pd.DataFrame, use_wls: bool = False, robust: Robust = Robust.NONE) -> tuple[float, float]:
     #fit line to data in df (x, y, optional sigma_y)
@@ -116,18 +94,6 @@ def fit_line(df: pd.DataFrame, use_wls: bool = False, robust: Robust = Robust.NO
         return fit_line_wls(df)
     return fit_line_ols(df)
 
-    #defensive checks
-    # - enforce numeric & no NaNs
-    df = df.apply(pd.to_numeric, errors="raise")
-    if df[["x","y"]].isna().any().any():
-        raise ValueError("NaN values detected in input data.")
-    
-    #polyfit with degree=1 (line)
-    x = df["x"].to_numpy()
-    y = df["y"].to_numpy()
-    m_est, b_est = np.polyfit(x, y, 1) #degree=1
-
-    return float(m_est), float(b_est), x, y
 
 def fit_line_ols(df: pd.DataFrame) -> tuple[float, float]:
     #plain OLS: good when noise is homoscedastic and no outliers
@@ -143,7 +109,7 @@ def fit_line_wls(df: pd.DataFrame) -> tuple[float, float]:
     x = df["x"].to_numpy()
     y = df["y"].to_numpy()
     s = df["sigma_y"].to_numpy()
-    w = 1.0 / (s ** 2) #weights = 1/s
+    w = 1.0 / (s ** 2) #weights = 1/sigma_y^2
 
     #solve normal equations for weighted linear regression
     X = np.stack([x, np.ones_like(x)], axis=1) #design matrix
@@ -162,7 +128,6 @@ def fit_line_huber(df: pd.DataFrame, delta: float = 1.0, max_iter: int = 50) -> 
     df = clean_nonfinite(df, ("x", "y"))
     x = df["x"].to_numpy()
     y = df["y"].to_numpy()
-    X = np.stack([x, np.ones_like(x)], axis=1)
 
     #start from OLS solution
     m_hat, b_hat = np.polyfit(x, y, 1)
@@ -181,11 +146,11 @@ def fit_line_huber(df: pd.DataFrame, delta: float = 1.0, max_iter: int = 50) -> 
         W = np.diag(w)
         XtWX = X.T @ W @ X
         XtWy = X.T @ W @ y
-        beta = np.linalg.solve(XtWX, XtWy, rcond=None)[0]
+        beta = np.linalg.lstsq(XtWX, XtWy, rcond=None)[0]
         m_new, b_new = float(beta[0]), float(beta[1])
 
         #check convergence
-        if np.isclose(m_new, m_hat) and np.isclose(b_new, b_hat):
+        if np.allclose([m_new, b_new], [m_hat, b_hat], atol=1e-6, rtol=0):
             break
 
         m_hat, b_hat = m_new, b_new
@@ -203,7 +168,7 @@ def save_plot(df: pd.DataFrame, m_true: float, b_true: float, m_fit: float, b_fi
     #matplotlib: save file (no GUI - for CI compatibility)
     plt.figure(figsize=(7,5))
     if "sigma_y" in df.columns:
-        #errorbar uses vertical errors bars for y
+        #errorbar uses vertical error bars for y
         plt.errorbar(df["x"], df["y"], yerr=df["sigma_y"], fmt='o', markersize=3, alpha=0.8, label="data ±σ")
     else:
         plt.scatter(df["x"], df["y"], s=18, alpha=0.8, label="data")
