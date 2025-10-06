@@ -12,7 +12,7 @@ jobs:
     steps:
       - checkout
 
-      - restore_chace:
+      - restore_cache:
           keys:
             - v1-pip-{{ arch }}-{{ .Branch }}-{{ checksum "lab04_data_pipeline/requirements.txt" }}
             - v1-pip-{{ arch }}-{{ .Branch }}
