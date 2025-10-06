@@ -4,25 +4,90 @@ jobs:
   lab04-data-pipeline:
     docker:
       - image: cimg/python:3.12
+
+    environment:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONPATH: "."
+
     steps:
       - checkout
+
+      - restore_chace:
+          keys:
+            - v1-pip-{{ arch }}-{{ .Branch }}-{{ checksum "lab04_data_pipeline/requirements.txt" }}
+            - v1-pip-{{ arch }}-{{ .Branch }}
+            - v1-pip
+
       - run:
           name: Install Python deps
           command: |
             python -m pip install --upgrade pip
-            python -m pip install -r lab04_data_pipeline/requirements.txt
+            if [ -f "pyproject.toml" ]; then
+              echo "Found pyproject.toml -> editable install"
+              pip install -e .
+            elif [ -f "lab04_data_pipeline/requirements.txt" ]; then
+              echo "Using lab04_data_pipeline/requirements.txt"
+              pip install -r lab04_data_pipeline/requirements.txt
+            else
+              echo "No pyproject.toml or requirements.txt found; installing minimal deps"
+              pip install numpy pandas matplotlib pytest
+            fi      
+            
+      - save_cache:
+          key: v1-pip-{{ arch }}-{{ .Branch }}-{{ checksum "lab04_data_pipeline/requirements.txt" }}
+          paths:
+            - ./venv
+            - ~/.cache/pip
+
+      - run:
+          name: Run unit tests
+          command: |
+            python -m pytest -q
+
       - run:
           name: Run pipeline (generate CSV, fit, plot) #as module so imports work
           command: python -m lab04_data_pipeline.scripts.run_pipeline
+      
       - run:
           name: Run tests (as module; consistent interpreter + path)
           command: python -m pytest -q lab04_data_pipeline/tests
+      
+      # Demo runs that generate artifacts for Step 4 & 5
+      - run:
+          name: Demo — Line (OLS)
+          command: |
+            python -m lab04_data_pipeline.scripts.run_pipeline \
+              --model line --n 250 --seed 1 --outdir artifacts/line_ci
+
+      - run:
+          name: Demo — Line (heteroscedastic + WLS)
+          command: |
+            python -m lab04_data_pipeline.scripts.run_pipeline \
+              --model line --heteroscedastic --wls \
+              --n 300 --seed 2 --outdir artifacts/line_wls_ci
+
+      - run:
+          name: Demo — Quadratic
+          command: |
+            python -m lab04_data_pipeline.scripts.run_pipeline \
+              --model quadratic \
+              --quad-a 0.3 --quad-b -1.2 --quad-c 2.0 \
+              --n 400 --seed 11 --x-start -2 --x-stop 2 \
+              --outdir artifacts/quad_ci
+
+      - run:
+          name: Demo — Exponential (MLE via log-fit)
+          command: |
+            python -m lab04_data_pipeline.scripts.run_pipeline \
+              --model exp \
+              --m 1.8 --b 0.6 --sigma-ln 0.15 \
+              --n 500 --seed 22 --x-start 0 --x-stop 4 \
+              --outdir artifacts/exp_ci
+      
+      #store all artifacts from unified artifacts/dir
       - store_artifacts:
-          path: lab04_data_pipeline/data
-          destination: lab04_data_pipeline/data
-      - store_artifacts:
-          path: lab04_data_pipeline/outputs
-          destination: lab04_data_pipeline/outputs
+          path: artifacts
+          destination: artifacts
 
 workflows:
   build-test:
