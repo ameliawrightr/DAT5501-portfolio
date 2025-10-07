@@ -1,0 +1,13 @@
+## Calendar Printer — lab05
+
+# What this script does
+1) Asks the user:
+   - How many days are in the month (e.g., 30)
+   - Which weekday the month starts on (e.g., 'Mon' or 1 if Sunday=0)
+
+2) Prints a simple month view in the terminal with one week per line.
+   Header must be: S M T W T F S  (weeks start on Sunday)
+
+# Teaching notes
+- We keep *logic* (pure functions) separate from *I/O* (input/print).
+- This makes it easier to test (see tests/test_calendar_printer.py).
