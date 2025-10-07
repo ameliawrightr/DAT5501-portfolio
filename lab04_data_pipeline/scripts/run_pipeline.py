@@ -11,6 +11,9 @@ from typing import Optional
 import pandas as pd
 import matplotlib.pyplot as plt
 
+PKG_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_OUTDIR = PKG_ROOT / "artifacts"
+
 #import pure functions + config 
 from lab04_data_pipeline.src.line_pipeline import (
     GenConfig, Robust, 
@@ -38,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--x-start", type=float, default=0.0)
     p.add_argument("--x-stop", type=float, default=10.0)
     p.add_argument("--noise", type=float, default=1.0, help="noise sigma (linear/quad); see --sigma-ln for exp")
-    p.add_argument("--outdir", type=Path, default=Path("artifacts"))
+    p.add_argument("--outdir", type=Path, default=DEFAULT_OUTDIR)
     p.add_argument("--write-meta", action="store_true", help="write meta.json (line model only)")
 
     # line model params & options
@@ -66,6 +69,11 @@ def main() -> None:
     args = parse_args()
     if args.model == "exp":
         args.model = "exponential"  #normalize naming  
+
+    #normalise outdir
+    if not args.outdir.is_absolute():
+        args.outdir = PKG_ROOT / args.outdir
+    args.outdir.mkdir(parents=True, exist_ok=True)
 
     robust = Robust.HUBER if args.robust == "huber" else Robust.NONE
 

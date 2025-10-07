@@ -32,3 +32,18 @@ pytest -q lab04_data_pipeline/tests
 Fri Oct  3 17:24:51 BST 2025
 Fri Oct  3 17:45:17 BST 2025
 Fri Oct  3 17:48:00 BST 2025
+
+
+## Run commands
+# Linear
+python -m lab04_data_pipeline.scripts.run_pipeline --model line --n 250 --seed 1 --outdir artifacts/line
+
+# Quadratic
+python -m lab04_data_pipeline.scripts.run_pipeline \
+  --model quadratic --quad-a 0.3 --quad-b -1.2 --quad-c 2.0 \
+  --n 400 --seed 11 --x-start -2 --x-stop 2 --outdir artifacts/quad
+
+# Exponential
+python -m lab04_data_pipeline.scripts.run_pipeline \
+  --model exponential --m 1.8 --b 0.6 --sigma-ln 0.15 \
+  --n 500 --seed 22 --x-start 0 --x-stop 4 --outdir artifacts/exp
