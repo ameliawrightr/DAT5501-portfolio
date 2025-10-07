@@ -13,16 +13,26 @@ import matplotlib.pyplot as plt
 
 #import pure functions + config 
 from lab04_data_pipeline.src.line_pipeline import (
-    GenConfig, Robust, generate_data, fit_line, save_plot,
-    generate_data_quadratic, fit_quadratic_ols, generate_data_exponential, fit_exponential_mle, r2_score, aic_from_rss,
+    GenConfig, Robust, 
+    #line
+    generate_data, fit_line, save_plot,
+    #quadratic
+    generate_data_quadratic, fit_quadratic_ols, 
+    #expontential
+    generate_data_exponential, fit_exponential_mle, 
+    #metrics 
+    r2_score, aic_from_rss,
 )
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run linear model pipeline.")
     #model family
-    p.add_argument("--model", choices=["line", "quadratic", "exponential"], default="line", help="model family")
+    p.add_argument("--model", 
+                   choices=["line", "quadratic", "exponential", "exp"], 
+                   default="line", 
+                   help="model family")
     
-  # common (line+quad+exp) base parameters
+    # common (line+quad+exp) base parameters
     p.add_argument("--n", type=int, default=200)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--x-start", type=float, default=0.0)
@@ -37,7 +47,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--heteroscedastic", action="store_true")
     p.add_argument("--sigma-min", type=float, default=0.3)
     p.add_argument("--sigma-max", type=float, default=1.8)
-    p.add_argument("--n-outliers", "--n_outliers", dest="n_outliers", type=int, default=0)
+    p.add_argument("--n-outliers", "--n_outliers", dest="n_outliers", type=int, default=0, 
+                   help="number of large outliers to inject")
     p.add_argument("--wls", action="store_true")
     p.add_argument("--robust", choices=["none", "huber"], default="none")
 
@@ -53,12 +64,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.model == "exp":
+        args.model = "exponential"  #normalize naming  
 
     robust = Robust.HUBER if args.robust == "huber" else Robust.NONE
 
     if args.model == "line":
         #build config
-        meta_dest = Optional[Path] = (args.outdir / "meta.json") if args.write_meta else None
+        meta_dest: Optional[Path] = (args.outdir / "meta.json") if args.write_meta else None
         cfg = GenConfig(
             m=args.m, b=args.b, n=args.n,
             x_start=args.x_start, x_stop=args.x_stop,
@@ -79,7 +92,7 @@ def main() -> None:
         #2. fit the model (fit_line accepts path and returns m, b, x, y)
         m_est, b_est, x, y = fit_line(csv_p, use_wls=args.wls, robust=robust)
 
-        #3. determine paramaters to report
+        #3. determine parameters to report
         if meta_p:
             meta = json.loads(Path(meta_p).read_text())
             m_true = float(meta["m"])
@@ -146,10 +159,11 @@ def main() -> None:
         plt.plot(xx, yy_true, linewidth=2, label="True curve")
         plt.plot(xx, yy_fit, linewidth=2, linestyle="--", label="Fitted curve")
         plt.xlabel("x"); plt.ylabel("y"); plt.title("Quadratic fit: true vs fitted")
-        plt.legend(); plt.tight_layout(); plt.savefig(str(curve_png), dpi=150); plt.close()
+        plt.legend(); plt.tight_layout(); 
+        plt.savefig(str(curve_png), dpi=150); plt.close()
         print(f"Saved plot to: {curve_png}")
 
-    else:  # args.model == "exp"
+    elif args.model == "exponential":  
         # 1) Generate data (homoscedastic log-noise by default)
         csv_p, _ = generate_data_exponential(
             a=args.m, b=args.b, n=args.n,
@@ -162,7 +176,9 @@ def main() -> None:
         a_hat, b_hat = fit_exponential_mle(csv_p)
 
         # 3) Metrics + plot
-        df = pd.read_csv(csv_p); x = df["x"].to_numpy(); y = df["y"].to_numpy()
+        df = pd.read_csv(csv_p)
+        x = df["x"].to_numpy()
+        y = df["y"].to_numpy()
         y_hat = a_hat * np.exp(b_hat * x)
         rss = float(np.sum((y - y_hat) ** 2))
         print(f"True exp: a={args.m:.3f}, b={args.b:.3f}")
@@ -176,7 +192,8 @@ def main() -> None:
         plt.plot(xx, args.m * np.exp(args.b * xx), linewidth=2, label="True curve")
         plt.plot(xx, a_hat * np.exp(b_hat * xx), linewidth=2, linestyle="--", label="Fitted curve")
         plt.xlabel("x"); plt.ylabel("y"); plt.title("Exponential fit: true vs fitted")
-        plt.legend(); plt.tight_layout(); plt.savefig(str(exp_png), dpi=150); plt.close()
+        plt.legend(); plt.tight_layout()
+        plt.savefig(str(exp_png), dpi=150); plt.close()
         print(f"Saved plot to: {exp_png}")
     
 

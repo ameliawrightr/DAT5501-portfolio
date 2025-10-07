@@ -244,10 +244,10 @@ def fit_quadratic_ols(df_or_path: Union[pd.DataFrame, str, Path]) -> tuple[float
     a, b, c = np.polyfit(df["x"].to_numpy(), df["y"].to_numpy(), deg=2)
     return float(a), float(b), float(c)
 
-#expontential model
+#exponential model
 def generate_data_exponential(
-        a: float, b: float,
-        n: int, x_min: float, x_max: float,
+        a: float, b: float, n: int, 
+        x_min: float, x_max: float,
         sigma_ln: Optional[float] = None, 
         seed: int = 42, 
         outdir: Path = Path("artifacts"),
@@ -265,7 +265,9 @@ def generate_data_exponential(
     x = rng.uniform(x_min, x_max, size=n)
 
     #baseline: homoscedastic log-space noise
-    ln_y = np.log(a) + b * x + rng.normal(0, sigma, size=n) #log space noise
+    #choose effective log-noise sigma: prefer sigma_ln, else sigma, else default 0.15
+    sigma_eff = sigma_ln if sigma_ln is not None else (sigma if sigma is not None else 0.15)
+    ln_y = np.log(a) + b * x + rng.normal(0.0, sigma_eff, size=n) #log space noise
     
     #optional: heteroscedastic in log-space
     if heteroscedastic and (sigma_max > sigma_min):
@@ -314,7 +316,7 @@ def save_plot(
     else:
         if y is None:
             raise ValueError("y must be provided when x is ndarray.")
-        df = pd.DataFrame({"x": x_or_df, "y": y})
+        df = pd.DataFrame({"x": np.asarray(x_or_df), "y": np.asarray(y)})
 
     #resolve out path priority: explicit arg > cfg.plot_path > outdir/plot.png
     target = out_png if out_png is not None else out_path
