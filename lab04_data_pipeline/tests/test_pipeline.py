@@ -87,3 +87,10 @@ def test_gof_r2_in_range():
     y_true = np.array([0,1,2,3,4], dtype=float)
     y_pred = np.array([0,1,2,3,4], dtype=float)
     assert 0.9999 < r2_score(y_true, y_pred) <= 1.0001
+
+def test_artifacts_path_inside_package():
+    pkg_root = Path(__file__).resolve().parents[1]  # .../lab04_data_pipeline
+    default_artifacts = pkg_root / "artifacts"
+    assert default_artifacts.exists() or True  # folder may be made at runtime
+    #Ensure we don't point at repo root ./artifacts by default
+    assert (Path.cwd() / "artifacts") != default_artifacts

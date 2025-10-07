@@ -12,6 +12,8 @@ from typing import Optional, Union
 # - ensures reproducibility + fewer mistakes
 # - lets tests override some fields (e.g., tmp paths, diff noise)
 
+PKG_ROOT = Path(__file__).resolve().parents[1]
+
 class Robust(Enum):
     NONE = "none"
     HUBER = "huber"
@@ -35,7 +37,7 @@ class GenConfig:
     #n_outliers with large dev test robustness
     n_outliers: int = 0
     seed: int = 42 #RNG seed to make runs reproducible
-    outdir: Path = Path("artifacts")
+    outdir: Path = PKG_ROOT / "artifacts" #output directory
 
     csv_path: Optional[Union[str, Path]] = None #if set, save CSV here
     meta_path: Optional[Union[str, Path]] = None #if set, save JSON

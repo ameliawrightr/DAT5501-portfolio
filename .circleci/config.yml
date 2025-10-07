@@ -84,6 +84,15 @@ jobs:
               --n 500 --seed 22 --x-start 0 --x-stop 4 \
               --outdir artifacts/exp_ci
       
+      - run:
+          name: Verify artifacts live inside package
+          command: |
+            ls -la lab04_data_pipeline/artifacts || exit 1
+            if [ -d artifacts ]; then
+              echo "Found rogue ./artifacts at repo root"; exit 2
+            fi
+
+            
       #store all artifacts from unified artifacts/dir
       - store_artifacts:
           path: artifacts
