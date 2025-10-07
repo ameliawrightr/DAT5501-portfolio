@@ -190,6 +190,116 @@ def fit_line_huber(df: pd.DataFrame, delta: float = 1.0, max_iter: int = 50) -> 
 
     return float(m_hat), float(b_hat)
 
+#goodness of fit metrics
+def r2_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    #coefficient of determination R^2
+    rss = float(np.sum((y_true - y_pred) ** 2)) #residual sum of squares
+    tss = float(np.sum((y_true - np.mean(y_true)) ** 2)) #total sum of squares
+    return 1.0 - (rss / tss)
+
+def chi2(y_true: np.ndarray, y_pred: np.ndarray, sigma: np.ndarray) -> float:
+    #chi-squared for known per point sigma (heteroscedastic)
+    return float(np.sum(((y_true - y_pred) / (sigma + 1e-12) ** 2)))
+
+def aic_from_rss(n: int, rss: float, k: int) -> float:
+    #Akaike Information Criterion from residual sum of squares
+    #n = number of data points, k = number of model params
+    #use for comparisons on same data 
+    return 2 * k + n * np.log(rss / n + 1e-12)
+
+#quadratic model
+def generate_data_quadratic(
+        a: float, b: float, c: float,
+        n: int, x_min: float, x_max: float,
+        sigma: float, seed: int, heteroscedastic: bool,
+        sigma_min: float, sigma_max: float,
+        n_outliers: int, outdir: Path
+) -> tuple[Path, Optional[Path]]:
+    rng = np.random.default_rng(seed)
+    x = rng.uniform(x_min, x_max, size=n)
+    if heteroscedastic:
+        sigma_y = rng.uniform(sigma_min, sigma_max, size=n)
+        noise = rng.normal(0, sigma_y)
+    else:
+        sigma_y = np.full(n, sigma, dtype=float)
+        noise = rng.normal(0, sigma, size=n)
+    y = a * x**2 + b * x + c + noise
+    if n_outliers > 0:
+        idx = rng.choice(n, size=min(n_outliers, n), replace=False)
+        y[idx] += rng.normal(0.0, 15.0, size=len(idx))
+    df = pd.DataFrame({"x": x, "y": y})
+    if heteroscedastic:
+        df["sigma_y"] = sigma_y
+
+    outdir.mkdir(parents=True, exist_ok=True)
+    out_csv = outdir / "data.csv"
+    df.to_csv(out_csv, index=False)
+    #no meta by default - CLI can save if needed
+    return out_csv, None
+
+def fit_quadratic_ols(df_or_path: Union[pd.DataFrame, str, Path]) -> tuple[float, float, float]:
+    #OLS fit to quadratic; returns (a_hat, b_hat, c_hat)
+    df = pd.read_csv(df_or_path) if isinstance(df_or_path, (str, Path)) else df_or_path
+    df = clean_nonfinite(df, ("x", "y"))
+    a, b, c = np.polyfit(df["x"].to_numpy(), df["y"].to_numpy(), deg=2)
+    return float(a), float(b), float(c)
+
+#exponential model
+def generate_data_exponential(
+        a: float, b: float, n: int, 
+        x_min: float, x_max: float,
+        sigma_ln: Optional[float] = None, 
+        seed: int = 42, 
+        outdir: Path = Path("artifacts"),
+        sigma: Optional[float] = None,
+        heteroscedastic: bool = False,
+        sigma_min: float = 0.0, sigma_max: float = 0.0,
+        n_outliers: int = 0,
+) -> tuple[Path, Optional[Path]]:
+    
+    #pick sigma_ln from either keyword
+    if sigma_ln is None:
+        sigma_ln = sigma if sigma is not None else 0.15
+
+    rng = np.random.default_rng(seed)
+    x = rng.uniform(x_min, x_max, size=n)
+
+    #baseline: homoscedastic log-space noise
+    #choose effective log-noise sigma: prefer sigma_ln, else sigma, else default 0.15
+    sigma_eff = sigma_ln if sigma_ln is not None else (sigma if sigma is not None else 0.15)
+    ln_y = np.log(a) + b * x + rng.normal(0.0, sigma_eff, size=n) #log space noise
+    
+    #optional: heteroscedastic in log-space
+    if heteroscedastic and (sigma_max > sigma_min):
+        s = np.interp(x, (x.min(), x.max()), (sigma_min, sigma_max)) 
+        ln_y = np.log(a) + b * x + rng.normal(0, s, size=n)
+
+    y = np.exp(ln_y)
+
+    #optional: multiplicative outliers
+    if n_outliers > 0:
+        idx = rng.choice(n, size=min(n_outliers, n), replace=False)
+        y[idx] *= rng.uniform(3.0, 10.0, size=len(idx)) #large dev
+
+    df = pd.DataFrame({"x": x, "y": y})
+
+    outdir.mkdir(parents=True, exist_ok=True)
+    out_csv = outdir / "data.csv"
+    df.to_csv(out_csv, index=False)
+    return out_csv, None
+
+def fit_exponential_mle(df_or_path: Union[pd.DataFrame, str, Path]) -> tuple[float, float]:
+    #MLE under gaussian noise in log space: OLS on (x, ln(y)) after filtering y>0
+    #returns (a_hat, b_hat)
+    df = pd.read_csv(df_or_path) if isinstance(df_or_path, (str, Path)) else df_or_path
+    df = clean_nonfinite(df, ("x", "y"))
+    df = df[df["y"] > 0].copy() #log
+    x = df["x"].to_numpy()
+    ln_y = np.log(df["y"].to_numpy())
+    b_hat, ln_a_hat = np.polyfit(x, ln_y, deg=1) #slope, intercept
+    a_hat = float(np.exp(ln_a_hat))
+    return float(a_hat), float(b_hat)
+
 def save_plot(
         x_or_df: Union[pd.DataFrame, np.ndarray],
         y: Optional[np.ndarray] = None,
@@ -206,7 +316,7 @@ def save_plot(
     else:
         if y is None:
             raise ValueError("y must be provided when x is ndarray.")
-        df = pd.DataFrame({"x": x_or_df, "y": y})
+        df = pd.DataFrame({"x": np.asarray(x_or_df), "y": np.asarray(y)})
 
     #resolve out path priority: explicit arg > cfg.plot_path > outdir/plot.png
     target = out_png if out_png is not None else out_path
