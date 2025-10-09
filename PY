@@ -1,0 +1,6 @@
+import pandas as pd
+for file in ["rule_of_law.csv", "democracy_index.csv", "gdp_per_capita.csv"]:
+    df = pd.read_csv(f"../data/raw/{file}")
+    print(file, "→", df.columns[:6])
+>>
+
