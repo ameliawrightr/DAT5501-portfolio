@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./lab06_rule_of_law_group_project/src/roltools"
+    ]
+}

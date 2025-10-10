@@ -1,31 +1,56 @@
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np 
 
 raw = Path("/Users/amelia/DAT5501-portfolio/lab06_rule_of_law_group_project/data/raw")
 out = Path("/Users/amelia/DAT5501-portfolio/lab06_rule_of_law_group_project/artifacts"); out.mkdir(parents=True, exist_ok=True)
 
-#load democracy index 
-dem = pd.read_csv(raw / "democracy_index.csv")
+rol_col = "Rule of Law Index (central estimate)"
+
+from roltools import germany_canonical, russia_canonical
+
+
+def mean_in_range(df, col, start, end):
+    m = df[df["Year"].between(start, end)].dropna(subset=[col])
+    if m.empty:
+        print(f"WARNING: No data in range {start}-{end}.")
+        return float("nan"), (start, end), 0
+    return float(m[col].mean()), (int(m["Year"].min()), int(m["Year"].max())), len(m)
+
+def slope_in_range(df, col, start, end):
+    m = df[df["Year"].between(start, end)].dropna(subset=[col, "Year"])
+    if len(m) < 2:
+        print(f"WARNING: Not enough points for slope in {start}-{end}.")
+        return float("nan"), (start, end), 0
+    x, y = m["Year"].to_numpy(), m[col].to_numpy()
+    s = float(np.polyfit(x, y, 1)[0])
+    return s, (int(m["Year"].min()), int(m["Year"].max())), len(m)
+
+def pct_change(new, old):
+    if not (np.isfinite(new) and np.isfinite(old)) or old == 0:
+        return float("nan")
+    return (new / old - 1.0) * 100.0
+
+def is_finite(*vals): 
+    return all(np.isfinite(v) for v in vals)
+
+
 #load rule of law index 
 rol = pd.read_csv(raw / "rule_of_law.csv")
 
-#identify correct cols
-dem_col = [c for c in dem.columns if "liberal democracy" in c.lower()][0]
-rol_col = [c for c in rol.columns if "rule of law" in c.lower()][0]
-print("Democracy column:", dem_col)
-print("Rule of law column:", rol_col)
+g_all = germany_canonical(rol, rol_col)
+r_all = russia_canonical(rol, rol_col)
 
-dem[dem_col] = pd.to_numeric(dem[dem_col], errors="coerce")
 rol[rol_col] = pd.to_numeric(rol[rol_col], errors="coerce")
 
 #filter Germany for 1918-1950 period,
 #main Germany ≤1945 and West Germany 1949-1950
-germany_main = dem[(dem["Entity"] == "Germany") & dem["Year"].between(1918,1945)][["Year",dem_col]].copy()
-west_49_50  = dem[(dem["Entity"]=="West Germany") & dem["Year"].between(1949,1950)][["Year",dem_col]].copy()
-g_series = pd.concat([germany_main, west_49_50], ignore_index=True).sort_values("Year")
+g_slice = g_all[g_all["Year"].between(1949, 1953)][["Year", rol_col]].dropna().copy()
+if g_slice.empty:
+    raise RuntimeError("Germany canonical slice is empty; check canonical builder and rol_col.")
 
-print("Final WWII series years:", g_series["Year"].min(), "→", g_series["Year"].max(), "rows:", len(g_series))
+print("Final WWII series years:", g_slice["Year"].min(), "→", g_slice["Year"].max(), "rows:", len(g_slice))
 
 #annotation of key historical events
 events = [
@@ -34,22 +59,22 @@ events = [
     (1935, "Nuremberg Laws"),
     (1939, "WWII begins"),
     (1945, "WWII ends / Allied occupation"),
-    (1949, "FRG / GDR formed")
+    (1949, "FRG/GDR formed")
 ]
 
 #plot german
 plt.figure(figsize=(10,5.5))
-plt.plot(g_series["Year"], g_series[dem_col], linewidth=2, color="black")
+plt.plot(g_slice["Year"], g_slice[rol_col], linewidth=2, color="black")
 
-y_top = float(g_series[dem_col].max())
+y_top = float(g_slice[rol_col].max())
 for yr, label in events:
-    if g_series["Year"].min() <= yr <= g_series["Year"].max():
+    if g_slice["Year"].min() <= yr <= g_slice["Year"].max():
         plt.axvline(yr, ls="--", alpha=0.35)
         plt.text(yr+0.15, y_top, label, rotation=90, va="top", fontsize=8)
 
-plt.title("Germany: Collapse of Rule of Law (1918-1950) via Democracy Proxy")
+plt.title("Germany: Collapse of Rule of Law (1918-1950)")
 plt.xlabel("Year")
-plt.ylabel("Liberal Democracy Index")
+plt.ylabel("Rule of Law Index")
 plt.ylim(0,1)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
