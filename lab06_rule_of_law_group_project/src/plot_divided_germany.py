@@ -15,10 +15,10 @@ print("Using value column:", val_col)
 #keep only east/west and div window
 mask_eu = df["Entity"].isin(["East Germany", "West Germany"])
 mask_years = df["Year"].between(1949,1990) #div period
-sub = df[mask_eu & mask_years].copy()
+sub = df[mask_eu & mask_years].dropna(subset=[val_col]).copy()
 
 #plot two lines, one per entity
-plt.figure(figsize=(9,5))
+plt.figure(figsize=(10,5.5))
 for name, g in sub.groupby("Entity"):
     g = g.sort_values("Year")
     plt.plot(g["Year"], g[val_col], linewidth=2, label=name)
@@ -39,4 +39,5 @@ plt.legend(frameon=False)
 plt.tight_layout()
 plt.savefig(out / "divided_germany_east_vs_west.png", dpi=300)
 plt.close
+
 print("Saved:", out / "divided_germany_east_vs_west.png")

@@ -7,7 +7,6 @@ out = Path("/Users/amelia/DAT5501-portfolio/lab06_rule_of_law_group_project/arti
 
 #load democracy index 
 dem = pd.read_csv(raw / "democracy_index.csv")
-
 #load rule of law index 
 rol = pd.read_csv(raw / "rule_of_law.csv")
 
@@ -25,6 +24,7 @@ rol[rol_col] = pd.to_numeric(rol[rol_col], errors="coerce")
 germany_main = dem[(dem["Entity"] == "Germany") & dem["Year"].between(1918,1945)][["Year",dem_col]].copy()
 west_49_50  = dem[(dem["Entity"]=="West Germany") & dem["Year"].between(1949,1950)][["Year",dem_col]].copy()
 g_series = pd.concat([germany_main, west_49_50], ignore_index=True).sort_values("Year")
+
 print("Final WWII series years:", g_series["Year"].min(), "→", g_series["Year"].max(), "rows:", len(g_series))
 
 #annotation of key historical events
@@ -38,7 +38,7 @@ events = [
 ]
 
 #plot german
-plt.figsize=(9,5)
+plt.figsize=(10,5.5)
 plt.plot(g_series["Year"], g_series[dem_col], linewidth=2, color="black")
 
 y_top = float(g_series[dem_col].max())
@@ -55,14 +55,16 @@ plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig(out / "germany_WW2_dual.png", dpi=300)
 plt.close()
+
 print("Saved: germany_WW2_dual.png")
 
-#Russia 2010-2024
-russia = rol[rol["Entity"] == "Russia"].copy()
-subset_r = russia[russia["Year"].between(2010,2024)]
 
-plt.figure(figsize=(9,5))
-plt.plot(subset_r["Year"], subset_r[rol_col], linewidth=2,color="red")
+#Russia 2010-2024
+russia = rol[(rol["Entity"] == "Russia") & (rol["Year"].between(2010, 2024))][["Year", rol_col]].dropna()
+russia = russia.sort_values("Year")
+
+plt.figure(figsize=(10,5.5))
+plt.plot(russia["Year"], russia[rol_col], linewidth=2,color="red")
 
 #annotations for key political events
 for yr, label in [
@@ -71,9 +73,10 @@ for yr, label in [
     (2020, "Constitutional term reset"),
     (2022, "Ukraine invasion"),
 ]:
-    plt.axvline(yr, ls="--", alpha=0.4)
-    y_top=subset_r[rol_col].max()
-    plt.text(yr+0.1, y_top, label, rotation=90, va="top",fontsize=8)
+    if russia["Year"].min() <= yr <= russia["Year"].max():
+        plt.axvline(yr, ls="--", alpha=0.4)
+        y_top = russia[rol_col].max()
+        plt.text(yr+0.1, y_top, label, rotation=90, va="top",fontsize=8)
 
 plt.title("Russia: Erosion of Rule of Law (2010-2024)")
 plt.xlabel("Year")
@@ -82,4 +85,5 @@ plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig(out / "russia_current_rol.png", dpi=300)
 plt.close()
-print("Saved: russia_curent_rol.png")
+
+print("Saved: russia_current_rol.png")
