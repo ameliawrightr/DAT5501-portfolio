@@ -38,7 +38,7 @@ events = [
 ]
 
 #plot german
-plt.figsize=(10,5.5)
+plt.figure(figsize=(10,5.5))
 plt.plot(g_series["Year"], g_series[dem_col], linewidth=2, color="black")
 
 y_top = float(g_series[dem_col].max())
