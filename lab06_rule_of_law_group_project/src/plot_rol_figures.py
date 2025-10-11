@@ -90,7 +90,7 @@ def fig1_germany(df, col_entity, col_year, col_rol, outpath):
                      (1945, "WWII ends (1945)") ]:
         ax.axvline(x, linestyle="--", linewidth=0.8, color="grey")
         txt_colour = "black" if x in (1933, 1945) else "grey" #highlight key events
-        ax.text(x + 0.35, y_mid, label, rotation=90, va="center", ha="center", color=txt_colour, fontsize=7.5)
+        ax.text(x + 0.35, y_mid, label, rotation=90, va="center", ha="center", color=txt_colour, fontsize=10)
 
     #label legend
     ax.legend(loc="upper right", fontsize=7.5)
@@ -393,13 +393,13 @@ def fig3a_since_regime_dual_axes_pct(df, col_entity, col_year, col_rol, outpath,
     for x, label in g_t:
         axL.axvline(x, 0, 1, linestyle="--", linewidth=0.8, color="red", zorder=0)
         axL.text(x + 0.35, y_label_pos(axL), label,
-                 rotation=90, va="center", ha="center", color="red", fontsize=8.5, clip_on=False)
+                 rotation=90, va="center", ha="center", color="red", fontsize=10, clip_on=False)
         
     # Russia marker
     for x, label in r_t:
         axR.axvline(x, 0, 1, linestyle="--", linewidth=0.8, color="black", zorder=0)
         axR.text(x + 0.35, y_label_pos(axR), label,
-                 rotation=90, va="center", ha="center", color="grey", fontsize=8.5, clip_on=False)
+                 rotation=90, va="center", ha="center", color="grey", fontsize=10, clip_on=False)
 
     # endpoint annotations
     def endpoint(ax, s, color):
