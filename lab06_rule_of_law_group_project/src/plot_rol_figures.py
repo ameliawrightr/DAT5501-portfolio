@@ -64,28 +64,36 @@ def delta_since_start(df, col_entity, col_year, col_rol, country, start_year, ho
 
 
 #figure generators
+
+#FIGURE 1: Germany with event markers and shaded areas
 def fig1_germany(df, col_entity, col_year, col_rol, outpath):
     ger_c = germany_continuous(df, col_entity, col_year, col_rol, 1930, 1950)
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.plot(ger_c[col_year], ger_c[col_rol], linewidth=1.6, color="red")
-    ax.set_title("Germany — Rule of Law (1930–1950, Combined & Interpolated)")
+    ax.set_title("Germany — Rule of Law (1930–1950)")
     ax.set_xlabel("Year")
     ax.set_ylabel("Rule of Law Index")
 
     #shadings
-    ax.axvspan(1933, 1938, alpha=0.10, color="grey")  # consolidation
-    ax.axvspan(1939, 1945, alpha=0.20, color="grey")  # WWII
+    ax.axvspan(1932, 1938, alpha=0.05, color="red", label="Rise of Nazi Germany")  # rise of Nazi Germany
+    ax.axvspan(1939, 1945, alpha=0.20, color="grey", label="World War II")  # WWII
 
     #marker labels mid-height with slight x-offset to avoid dashed lines
     y_min, y_max = float(np.nanmin(ger_c[col_rol])), float(np.nanmax(ger_c[col_rol]))
     y_mid = y_min + 0.5*(y_max - y_min)
-    for x, label in [(1933, "Nazi rise (1933)"),
+    for x, label in [(1932, "Nazi Germany rise (1932)"),
+                     (1933, "Hitler becomes Chancellor (1933)"),
+                     (1935, "Nuremberg Laws (1935)"),
                      (1939, "WWII starts (1939)"),
+                     (1943, "Weakening of Nazi Germany begins (1943)"),
                      (1945, "WWII ends (1945)") ]:
         ax.axvline(x, linestyle="--", linewidth=0.8, color="grey")
-        ax.text(x + 0.35, y_mid, label, rotation=90, va="center", ha="center", color="grey", fontsize=8)
+        ax.text(x + 0.35, y_mid, label, rotation=90, va="center", ha="center", color="grey", fontsize=7.5)
 
-    # Every year tick
+    #label legend
+    ax.legend(loc="upper right", fontsize=7.5)
+
+    #every year tick
     ax.set_xlim(1930, 1950)
     ax.xaxis.set_major_locator(MultipleLocator(1))
 
@@ -94,17 +102,25 @@ def fig1_germany(df, col_entity, col_year, col_rol, outpath):
     fig.savefig(outpath, bbox_inches="tight")
     plt.close(fig)
 
+
+#FIGURE 2: Russia with event markers
 def fig2_russia(df, col_entity, col_year, col_rol, outpath):
     full_rus = df[df[col_entity] == "Russia"].sort_values(col_year)
     rus = full_rus[(full_rus[col_year].between(1999, 2024))]  # include 1999
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(rus[col_year], rus[col_rol], linewidth=1.8, color="black", marker="o", markersize=3)
+    ax.plot(rus[col_year], rus[col_rol], linewidth=1.6, color="black")
     ax.set_title("Russia — Rule of Law (1999–2024)")
     ax.set_xlabel("Year")
     ax.set_ylabel("Rule of Law Index")
 
-    # Clamp y-lims to data with small pad
+    #shadings
+    ax.axvspan(1999, 2000, alpha=0.03, color="red", label="Putin's Rise")  #Putin's Rise
+    ax.axvspan(2000, 2003, alpha=0.10, color="red", label="Economic Reforms")  # Economic Reforms
+    ax.axvspan(2019, 2021, alpha=0.03, color="purple", label="Constitutional Changes")  # Constitutional Changes
+    ax.axvspan(2022, 2024, alpha=0.20, color="grey", label="Ukraine Invasion")  # Ukraine Invasion
+
+    #clamp y-lims to data with small pad
     y_min = float(rus[col_rol].min())
     y_max = float(rus[col_rol].max())
     pad = 0.04 * (y_max - y_min if y_max > y_min else 0.01)
@@ -112,22 +128,88 @@ def fig2_russia(df, col_entity, col_year, col_rol, outpath):
 
     def y_at(year):
         return value_at(full_rus, col_year, col_rol, year)
+    
+    def place_label(ax, x, y_line, placed, y_low, y_high,
+                    base_pos=0.6, 
+                    min_gap_y=0.06,
+                    min_gap_lbl=0.08,
+                    search_steps=12):
+        #find position for label that does not overlap with existing ones
+        y0, y1 = ax.get_ylim()
+        yr = y1 - y0
 
-    y_range = ax.get_ylim()[1] - ax.get_ylim()[0]
-    y_base = ax.get_ylim()[0] + 0.55 * y_range
+        y_cand = y0 + base_pos * yr
+        y_cand = max(min(y_cand, y_high - 0.01*yr), y_low + 0.01*yr)
+    
+        #initial candiate y around base_pos of axis, clamp to y_low/y_high
+        y_range = ax.get_ylim()[1] - ax.get_ylim()[0]
+        y_base = ax.get_ylim()[0] + 0.55 * y_range
 
+        #if too close to data line, move away
+        if abs(y_cand - y_line) < min_gap_y * yr:
+            if y_line <= y_cand:
+                y_cand = min(y_high - 0.01*yr, y_line + min_gap_y * yr)
+            else:
+                y_cand = max(y_low + 0.01*yr, y_line - min_gap_y * yr)
+        
+        #if still too close to existing labels, try to move up/down in steps
+        near = [(xx, yy) for xx, yy in placed if abs(xx - x) <= 1.0]
+        step = (min_gap_lbl * yr)
+        direction = 1
+        for _ in range(search_steps):
+            ok = True
+            for _, yy in near:
+                if abs(y_cand - yy) < min_gap_lbl * yr:
+                    ok = False
+                    break
+                if ok:
+                    return y_cand
+                #not ok, move
+                y_cand = y_cand + direction * step
+                #flip direction if hit bounds
+                direction *= -1
+                step *= 0.9
+                y_cand = max(min(y_cand, y_high - 0.01*yr), y_low + 0.01*yr)
+        
+        return y_cand  #give up, return last candidate
+    
+    #marker labels with collision avoidace
+    y0, y1 = ax.get_ylim()
+    yrange = y1 - y0
+    y_low = y0 + 0.1 * yrange
+    y_high = y1 - 0.06 * yrange
+    
     markers = [
-        (1999, "Putin to power (1999)"),
+        (1999, "Putin to Prime Minister (1999)"),
+        (2001.5, "Putin economic reforms (2001-2003)"),
+        (2004, "Putin second term (2004)"),
+        (2012, "Protests to Putin third term (2012)"),
         (2014, "Crimea (2014)"),
+        (2018, "Putin fourth term (2018)"),
+        (2020, "Constitutional changes (2020)"),
         (2022, "Full-scale invasion of Ukraine (2022)"),
+        (2024, "Putin fifth term (2024)"),
     ]
-    for x, label in markers:
+    
+    placed = []
+    for i, (x, label) in enumerate(markers):
         ax.axvline(x, linestyle="--", linewidth=0.8, color="grey")
-        y_lab = y_base
+
+        #small x offset to avoid dashed line
+        xoff = 0.35 if i % 2 == 0 else 0.45
+
         y_line = y_at(x)
-        if abs(y_lab - y_line) < 0.08 * y_range:
-            y_lab = min(ax.get_ylim()[1] - 0.02*y_range, y_line + 0.15 * y_range)
-        ax.text(x + 0.45, y_lab, label, rotation=90, va="center", ha="center", color="grey", fontsize=8, clip_on=True)
+        y_lab = place_label(ax, x, y_line, placed, y_low, y_high,
+                            base_pos=0.58, min_gap_y=0.06, min_gap_lbl=0.08)
+        placed.append((x, y_lab))
+
+
+        ax.text(x + xoff, y_lab, label, 
+                rotation=90, va="center", ha="center", 
+                color="grey", fontsize=8, clip_on=True)
+
+    #label legend
+    ax.legend(loc="upper right", fontsize=7.5)
 
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.set_xlim(1999, 2024)
@@ -136,6 +218,8 @@ def fig2_russia(df, col_entity, col_year, col_rol, outpath):
     fig.savefig(outpath, bbox_inches="tight")
     plt.close(fig)
 
+
+#FIGURE 3: Δ vs t0 with top baseline
 def fig3_since_regime_topbaseline(df, col_entity, col_year, col_rol, outpath):
     g_reg = delta_since_start(df, col_entity, col_year, col_rol, "Germany", 1933, horizon=12)
     r_reg = delta_since_start(df, col_entity, col_year, col_rol, "Russia", 1999, horizon=12)
