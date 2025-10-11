@@ -208,7 +208,7 @@ def fig2_russia(df, col_entity, col_year, col_rol, outpath):
 
         ax.text(x + xoff, y_lab, label, 
                 rotation=90, va="center", ha="center", 
-                color="grey", fontsize=8, clip_on=True)
+                color="grey", fontsize=10, clip_on=True)
 
     #label legend
     ax.legend(loc="upper right", fontsize=7.5)
