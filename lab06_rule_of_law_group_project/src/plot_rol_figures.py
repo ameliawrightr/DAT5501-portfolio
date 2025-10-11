@@ -3,8 +3,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator, MaxNLocator
+from matplotlib.ticker import MultipleLocator, MaxNLocator, FuncFormatter
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 #helpers
 def load_data(csv_path):
@@ -282,6 +283,104 @@ def fig3_since_regime_topbaseline(df, col_entity, col_year, col_rol, outpath):
     fig.savefig(outpath, bbox_inches="tight")
     plt.close(fig)
 
+
+#FIGURE 4: 
+def fig4a_dual_axis(df, col_entity, col_year, col_rol, outpath):
+    """
+    Grouped bar chart (Pre vs War) with TWO Y-AXES
+      - Left Y-axis: Germany (pre/war)
+      - Right Y-axis: Russia (pre/war)
+      - Δ labels per country, value labels on bars
+    """
+
+    #period windows
+    g_pre = df[(df[col_entity].str.contains("Germany", na=False)) & (df[col_year].between(1930, 1932))][col_rol].mean()
+    g_war = df[(df[col_entity].str.contains("Germany", na=False)) & (df[col_year].between(1939, 1945))][col_rol].mean()
+    r_pre = df[(df[col_entity] == "Russia") & (df[col_year].between(2010, 2018))][col_rol].mean()
+    r_war = df[(df[col_entity] == "Russia") & (df[col_year].between(2022, 2024))][col_rol].mean()
+
+    #x positions: 0 for Germany, 1 for Russia
+    x = np.array([0, 1], dtype=float)
+    width = 0.42
+
+    fig, axL = plt.subplots(figsize=(10, 6))
+    axR = axL.twinx()  # second y-axis for Russia
+
+    #bars
+    #germany on LEFT axis at x=0 (two bars: pre and war)
+    b_g_pre = axL.bar(x[0] - width/2, g_pre, width, color="red", alpha=0.5)
+    b_g_war = axL.bar(x[0] + width/2, g_war, width, color="red", alpha=1.0)
+
+    #russia on RIGHT axis at x=1 (two bars: pre and war)
+    b_r_pre = axR.bar(x[1] - width/2, r_pre, width, color="black", alpha=0.5)
+    b_r_war = axR.bar(x[1] + width/2, r_war, width, color="black", alpha=1.0)
+
+    #titles/axis
+    axL.set_title("Rule of Law — Pre vs War Period Averages")
+    axL.set_ylabel("Germany — Rule of Law Index")
+    axR.set_ylabel("Russia — Rule of Law Index")
+    axL.set_xticks(x)
+    axL.set_xticklabels(["Germany", "Russia"])
+    axL.grid(False)
+    axR.grid(False)
+
+    #legend 
+    legend_handles = [
+        Patch(facecolor="red", alpha=0.5, label="Germany: Pre-war"),
+        Patch(facecolor="red", alpha=1.0, label="Germany: War"),
+        Patch(facecolor="black", alpha=0.5, label="Russia: Pre-war"),
+        Patch(facecolor="black", alpha=1.0, label="Russia: War"),
+    ]
+    axL.legend(handles=legend_handles, loc="best")
+
+    #helpers
+    def _bar_height(container):
+        if container and len(container.patches) > 0:
+            h = container.patches[0].get_height()
+            try:
+                return float(h)
+            except Exception:
+                return np.nan
+        return np.nan
+
+    def _annotate_values(ax, container):
+        h = _bar_height(container)
+        if not np.isnan(h):
+            rect = container.patches[0]
+            ax.text(rect.get_x() + rect.get_width()/2, h,
+                    f"{h:.2f}", ha="center", va="bottom", fontsize=9)
+
+    # Δ labels: compute per country on its own axis scale and place between the two bars
+    def _delta_label(ax, cont_pre, cont_war, label_country):
+        y0 = _bar_height(cont_pre)
+        y1 = _bar_height(cont_war)
+        if np.isnan(y0) or np.isnan(y1):
+            return
+        # midpoint x between the two bars
+        x_mid = (cont_pre.patches[0].get_x() + cont_pre.patches[0].get_width()/2 +
+                 cont_war.patches[0].get_x() + cont_war.patches[0].get_width()/2) / 2
+        # place at mid-height of the two values on THIS axis
+        y_mid = (y0 + y1) / 2.0
+        ax.text(x_mid, y_mid, f"Δ {label_country}: {y1 - y0:+.2f}",
+                ha="center", va="center", fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7))
+
+    #apply annotations
+    _annotate_values(axL, b_g_pre)
+    _annotate_values(axL, b_g_war)
+    _annotate_values(axR, b_r_pre)
+    _annotate_values(axR, b_r_war)
+
+    _delta_label(axL, b_g_pre, b_g_war, "Germany")
+    _delta_label(axR, b_r_pre, b_r_war, "Russia")
+
+    #tight layout & save
+    plt.tight_layout()
+    fig.savefig(outpath, bbox_inches="tight")
+    plt.close(fig)
+
+
+#FIGURE 4: Grouped bar chart pre vs war averages with Δ labels
 def fig4_grouped(df, col_entity, col_year, col_rol, outpath):
     # Period windows
     g_pre = df[(df[col_entity].str.contains("Germany")) & (df[col_year].between(1930, 1932))][col_rol].mean()
@@ -335,6 +434,7 @@ def fig4_grouped(df, col_entity, col_year, col_rol, outpath):
     fig.savefig(outpath, bbox_inches="tight")
     plt.close(fig)
 
+
 # ------------------------------------------------------------
 # Main
 # ------------------------------------------------------------
@@ -354,12 +454,15 @@ def main():
     fig2_russia(df, col_entity, col_year, col_rol, outdir / "fig2_russia_1999_2024.png")
     fig3_since_regime_topbaseline(df, col_entity, col_year, col_rol, outdir / "fig3_since_regime_start_topbaseline.png")
     fig4_grouped(df, col_entity, col_year, col_rol, outdir / "fig4_grouped_pre_vs_war.png")
+    fig4a_dual_axis(df, col_entity, col_year, col_rol, outdir / "fig4a_dual_axis.png")
+
 
     print("Saved:")
     print(outdir / "fig1_germany_1930_1950.png")
     print(outdir / "fig2_russia_1999_2024.png")
     print(outdir / "fig3_since_regime_start_topbaseline.png")
     print(outdir / "fig4_grouped_pre_vs_war.png")
+    print(outdir / "fig4a_dual_axis.png")
 
 if __name__ == "__main__":
     main()
