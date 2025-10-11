@@ -89,7 +89,8 @@ def fig1_germany(df, col_entity, col_year, col_rol, outpath):
                      (1943, "Weakening of Nazi Germany begins (1943)"),
                      (1945, "WWII ends (1945)") ]:
         ax.axvline(x, linestyle="--", linewidth=0.8, color="grey")
-        ax.text(x + 0.35, y_mid, label, rotation=90, va="center", ha="center", color="grey", fontsize=7.5)
+        txt_colour = "black" if x in (1933, 1945) else "grey" #highlight key events
+        ax.text(x + 0.35, y_mid, label, rotation=90, va="center", ha="center", color=txt_colour, fontsize=7.5)
 
     #label legend
     ax.legend(loc="upper right", fontsize=7.5)
