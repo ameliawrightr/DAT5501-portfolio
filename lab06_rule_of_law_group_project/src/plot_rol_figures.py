@@ -220,70 +220,213 @@ def fig2_russia(df, col_entity, col_year, col_rol, outpath):
     plt.close(fig)
 
 
+
 #FIGURE 3: Δ vs t0 with top baseline
 def fig3_since_regime_topbaseline(df, col_entity, col_year, col_rol, outpath):
-    g_reg = delta_since_start(df, col_entity, col_year, col_rol, "Germany", 1933, horizon=12)
-    r_reg = delta_since_start(df, col_entity, col_year, col_rol, "Russia", 1999, horizon=12)
+    
+    def delta_since_start(country, start_year, horizon=12):
+        s = df[df[col_entity] == country].sort_values(col_year)
+        if s.empty:
+            return None
+        yrs = s[col_year].values.astype(float)
+        vals = s[col_rol].values.astype(float)
+        base = float(np.interp(start_year, yrs, vals))
+        w = s[(s[col_year] >= start_year) & (s[col_year] <= start_year + horizon)].copy()
+        w["t"] = w[col_year] - start_year
+        w["delta_pts"] = w[col_rol] - base
+        return w[["t", "delta_pts"]]
+    
+    g_reg = delta_since_start("Germany", 1933, horizon=12)
+    r_reg = delta_since_start("Russia", 1999, horizon=12)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    if not g_reg.empty:
-        ax.plot(g_reg["t"], g_reg["delta_pts"], linewidth=1.8, color="red", label="Germany (since 1933)")
-    if not r_reg.empty:
-        ax.plot(r_reg["t"], r_reg["delta_pts"], linewidth=1.8, color="black", label="Russia (since 1999)")
+    fig, axL = plt.subplots(figsize=(10, 6))
+    axR = axL.twinx() #right y-axis shares x but has own y-axis
 
-    # Determine negative extent only
-    min_val = 0.0
-    for s in [g_reg, r_reg]:
-        if not s.empty:
-            min_val = min(min_val, float(np.nanmin(s["delta_pts"])))
-    extent = abs(min_val)
-    pad = 0.08 * extent if extent > 0 else 0.1
+    #plot series on own axes
+    if g_reg is not None and not g_reg.empty:
+        axL.plot(g_reg["t"], g_reg["delta_pts"], color="red", linewidth=1.8, label="Germany (since 1933)")
+    if r_reg is not None and not r_reg.empty:
+        axR.plot(r_reg["t"], r_reg["delta_pts"], color="black", linewidth=1.8, label="Russia (since 1999)")
 
-    # Set 0 at the TOP (baseline) and only show negative values downward
-    ax.set_ylim(0 - 1e-9, -(extent + pad))  # small epsilon to keep baseline visible
+    #determine negative extents (only show deterioration downward)
+    def neg_extent(s):
+        return abs(min(0.0, float(np.nanmin(s["delta_pts"])))) if s is not None and not s.empty else 0.0
+    
+    g_ext = neg_extent(g_reg)
+    r_ext = neg_extent(r_reg)
+    pad_g = 0.08 * g_ext if g_ext > 0 else 0.1
+    pad_r = 0.08 * r_ext if r_ext > 0 else 0.1
 
-    # Style the TOP spine as baseline and add a top x-axis
-    ax.spines["top"].set_visible(True)
-    ax.spines["top"].set_linewidth(1.6)
-    ax.spines["top"].set_color("grey")
+    #put baseline at top on both axis, only negative downward
+    axL.set_ylim(0 - 1e-9, -(g_ext + pad_g))  # small epsilon to keep baseline visible
+    axR.set_ylim(0 - 1e-9, -(r_ext + pad_r))
 
-    ax_top = ax.secondary_xaxis('top')
-    ax_top.set_xlabel("Baseline at t0", color="grey")
-    ax_top.tick_params(axis='x', colors='grey')
-    ax_top.spines['top'].set_color('grey')
-    ax_top.spines['top'].set_linewidth(1.6)
+    #style top baseline spine and legend entry
+    for ax in (axL, axR):
+        ax.spines["top"].set_visible(True)
+        ax.spines["top"].set_linewidth(1.6)
+        ax.spines["top"].set_color("grey")
 
-    # Baseline handle for legend
     baseline_proxy = Line2D([0], [0], color="grey", linewidth=1.8)
-    handles, labels = ax.get_legend_handles_labels()
-    handles.append(baseline_proxy)
-    labels.append("Baseline (value at t0)")
-    ax.legend(handles, labels, loc="best")
 
-    ax.set_title("Change in Rule of Law — Years Since Regime Start (Δ index points)")
-    ax.set_xlabel("Years since start (t)")
-    ax.set_ylabel("Δ (index points; downward = deterioration)")
+    #legend
+    axL.set_title("Change in Rule of Law — Years Since Regime Start")
+    axL.set_xlabel("Years since start (t)")
+    axL.set_ylabel("Δ (Germany index points)", color="red")
+    axR.set_ylabel("Δ (Russia index points)", color="black")
 
-    # Integer ticks for t
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    #integer ticks on x
+    axL.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    # Endpoint labels
-    def label_endpoint(s, color):
-        if s.empty: return
+    #endpoint labels
+    def label_endpoint(ax, s, color):
+        if s is None or s.empty: 
+            return
         t_end = s["t"].max()
         v_end = float(s.loc[s["t"] == t_end, "delta_pts"].iloc[0])
         ax.text(t_end, v_end, f"{v_end:+.2f}", va="center", ha="left", fontsize=8, color=color)
 
-    label_endpoint(g_reg, "red")
-    label_endpoint(r_reg, "black")
+    label_endpoint(axL, g_reg, "red")
+    label_endpoint(axR, r_reg, "black")
 
-    # Light y-grid only
-    ax.grid(True, axis="y", linewidth=0.4, alpha=0.2)
+    #combined legend
+    handlesL, labelsL = axL.get_legend_handles_labels()
+    handlesR, labelsR = axR.get_legend_handles_labels()
+    handles = handlesL + handlesR + [baseline_proxy]
+    labels = labelsL + labelsR + ["Baseline (t=0)"]
+    axL.legend(handles, labels, loc="best", fontsize=7.5)
+
+    #light y-grid only
+    axL.grid(True, axis="y", linewidth=0.4, alpha=0.2)
+    axR.grid(True, axis="y", linewidth=0.4, alpha=0.2)
+
+    plt.tight_layout()
+    fig.savefig(outpath, bbox_inches="tight")
+    plt.close(fig)
+    
+
+#FIGURE 3 (ALT): dual y-axes with % change from t0 (0 at top, only negatives)
+#shows data in a easier to interpret % change format, but dual axes can be hard to read
+
+def _pct_since_start(df, col_entity, col_year, col_rol, country, start_year, horizon=12):
+    s = df[df[col_entity] == country].sort_values(col_year)
+    if s.empty:
+        return None, start_year
+    
+    yrs = s[col_year].values.astype(float)
+    vals = s[col_rol].values.astype(float)
+    base = float(np.interp(start_year, yrs, vals))
+
+    w = s[(s[col_year] >= start_year) & (s[col_year] <= start_year + horizon)].copy()
+    w["t"] = w[col_year] - start_year
+    # % change vs t0
+    w["delta_pct"] = (w[col_rol] / base - 1.0) * 100.0
+    return w[["t", "delta_pct"]], start_year
+
+
+def fig3a_since_regime_dual_axes_pct(df, col_entity, col_year, col_rol, outpath, g_start=1933, r_start=1999):
+
+    g, _ = _pct_since_start(df, col_entity, col_year, col_rol, "Germany", g_start, horizon=12)
+    r, _ = _pct_since_start(df, col_entity, col_year, col_rol, "Russia", r_start, horizon=12)
+
+    fig, axL = plt.subplots(figsize=(10, 6))
+    axR = axL.twinx()  #right axis for Russia
+
+    if g is not None and not g.empty:
+        axL.plot(g["t"], g["delta_pct"], color="red", linewidth=1.8, label="Germany (since 1933)")
+    if r is not None and not r.empty:
+        axR.plot(r["t"], r["delta_pct"], color="black", linewidth=1.8, label="Russia (since 1999)")
+
+    # negative extents only (decline), put 0 at TOP on both axes
+    def neg_extent(df_):
+        return abs(min(0.0, float(np.nanmin(df_["delta_pct"])))) if (df_ is not None and not df_.empty) else 0.0
+    
+    def extents(df_):
+            if df_ is None or df_.empty:
+                return 0.0, 0.0
+            v = df_["delta_pct"].to_numpy()
+            v = v[~np.isnan(v)]
+            if v.size == 0:
+                return 0.0, 0.0
+            pos = max(0.0, float(np.nanmax(v)))
+            neg = min(0.0, float(np.nanmin(v)))
+            return neg, pos
+
+    g_neg, g_pos = extents(g)
+    r_neg, r_pos = extents(r)  
+    
+    g_ext = neg_extent(g); r_ext = neg_extent(r)
+    
+    pad_g = 0.08 * g_ext if g_ext > 0 else 0.1
+    pad_r = 0.08 * r_ext if r_ext > 0 else 0.1
+    
+    axL.set_ylim(g_pos + pad_g, g_neg - pad_g)
+    axR.set_ylim(r_pos + pad_r, r_neg - pad_r)
+    
+    #% formatters, labels
+    pct_fmt = FuncFormatter(lambda v, pos: f"{v:.0f}%")
+    axL.yaxis.set_major_formatter(pct_fmt)
+    axR.yaxis.set_major_formatter(pct_fmt)
+    axL.set_title("% Change in Rule of Law — Years Since Regime Start")
+    axL.set_xlabel("Years since start (t)")
+    axL.set_ylabel("Δ % — Germany")
+    axR.set_ylabel("Δ % — Russia")
+    axL.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    def y_label_pos(ax, frac=0.2):
+        y0, y1 = ax.get_ylim()
+        return y0 + frac * (y1 - y0)
+    
+     
+
+    
+    #event markers (years since start)
+    g_marker_year = [(1934, "WWII starts")]
+    r_marker_year = [(2003, "Russia economic reforms end")]
+    
+    #make absolute
+    g_t = [(x - g_start, label) for x, label in g_marker_year]
+    r_t = [(x - r_start, label) for x, label in r_marker_year]
+
+    # Germany markers
+    for x, label in g_t:
+        axL.axvline(x, 0, 1, linestyle="--", linewidth=0.8, color="red", zorder=0)
+        axL.text(x + 0.35, y_label_pos(axL), label,
+                 rotation=90, va="center", ha="center", color="red", fontsize=8.5, clip_on=False)
+        
+    # Russia marker
+    for x, label in r_t:
+        axR.axvline(x, 0, 1, linestyle="--", linewidth=0.8, color="black", zorder=0)
+        axR.text(x + 0.35, y_label_pos(axR), label,
+                 rotation=90, va="center", ha="center", color="grey", fontsize=8.5, clip_on=False)
+
+    # endpoint annotations
+    def endpoint(ax, s, color):
+        if s is None or s.empty:
+            return
+        t_end = s["t"].max()
+        v_end = float(s.loc[s["t"] == t_end, "delta_pct"].iloc[0])
+        ax.text(t_end, v_end, f"{v_end:+.1f}%", va="center", ha="left", fontsize=8, color=color)
+
+    endpoint(axL, g, "red")
+    endpoint(axR, r, "black")
+
+    #every year tick
+    axL.set_xlim(0, 12)
+    axL.xaxis.set_major_locator(MultipleLocator(1))
+
+    # combined legend
+    hL, lL = axL.get_legend_handles_labels()
+    hR, lR = axR.get_legend_handles_labels()
+    axL.legend(hL + hR, lL + lR, loc="best", fontsize=7.5) 
+
+    axL.grid(True, axis="y", linewidth=0.4, alpha=0.2)
     plt.tight_layout()
     fig.savefig(outpath, bbox_inches="tight")
     plt.close(fig)
 
 
+#FIGURE 4: Grouped bar chart pre vs war
 #FIGURE 4: 
 def fig4a_dual_axis(df, col_entity, col_year, col_rol, outpath):
     """
@@ -398,7 +541,7 @@ def fig4_grouped(df, col_entity, col_year, col_rol, outpath):
     b_r_pre = ax.bar(x[1] - width/2, r_pre, width, color="black", alpha=0.5, label="Pre-war Russia")
     b_r_war = ax.bar(x[1] + width/2, r_war, width, color="black", alpha=1.0, label="War Russia")
 
-    ax.set_title("Rule of Law — Pre vs War Period Averages (Grouped)")
+    ax.set_title("Rule of Law — Pre vs War Period Averages")
     ax.set_ylabel("Rule of Law Index")
     ax.set_xticks(x)
     ax.set_xticklabels(["Germany", "Russia"])
@@ -453,6 +596,7 @@ def main():
     fig1_germany(df, col_entity, col_year, col_rol, outdir / "fig1_germany_1930_1950.png")
     fig2_russia(df, col_entity, col_year, col_rol, outdir / "fig2_russia_1999_2024.png")
     fig3_since_regime_topbaseline(df, col_entity, col_year, col_rol, outdir / "fig3_since_regime_start_topbaseline.png")
+    fig3a_since_regime_dual_axes_pct(df, col_entity, col_year, col_rol, outpath=outdir / "fig3a_since_regime_dual_pct.png")
     fig4_grouped(df, col_entity, col_year, col_rol, outdir / "fig4_grouped_pre_vs_war.png")
     fig4a_dual_axis(df, col_entity, col_year, col_rol, outdir / "fig4a_dual_axis.png")
 
@@ -461,6 +605,7 @@ def main():
     print(outdir / "fig1_germany_1930_1950.png")
     print(outdir / "fig2_russia_1999_2024.png")
     print(outdir / "fig3_since_regime_start_topbaseline.png")
+    print(outdir / "fig3a_since_regime_dual_pct.png")
     print(outdir / "fig4_grouped_pre_vs_war.png")
     print(outdir / "fig4a_dual_axis.png")
 
