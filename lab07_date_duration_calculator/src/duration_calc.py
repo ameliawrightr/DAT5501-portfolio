@@ -28,8 +28,30 @@ def load_dates_and_calculate(csv_path: str, date_col: str = "date") -> pd.DataFr
     #returns: pd.DataFrame - original DataFrame with an additional column for days since
 
     df = pd.read_csv(csv_path)
-    if date_col not in df.columns:
-        raise ValueError(f"Column '{date_col}' not found in {csv_path}.")
+    original_cols = df.columns.tolist()
+    df.columns = [c.strip() for c in df.columns]
+    lower_map = {c: c.lower() for c in df.columns}
+    df.rename(columns=lower_map, inplace=True)
 
-    df['days_since'] = df[date_col].apply(days_since)
+    if date_col:
+        dc = date_col.strip().lower()
+        if dc not in df.columns:
+            raise ValueError(
+                f"Column '{date_col}' not found. Available columns: {list(df.columns)}")
+    else:
+        candidates = [c for c in df.columns if c in {"date", "dates", "date_str", "date_string"}]
+        dc = candidates[0] if candidates else None
+        if dc is None:
+            best, best_ok = None, -1
+            for c in df.columns:
+                parsed = pd.to_datetime(df[c], errors='coerce')
+                ok = parsed.notna().sum()
+                if ok > best_ok:
+                    best, best_ok = c, ok
+            dc = best
+        if dc is None:
+            raise ValueError(
+                f"No suitable date column found. Available columns: {list(df.columns)}")
+
+    df['days_since'] = df[dc].apply(days_since)
     return df
