@@ -1,0 +1,5 @@
+Amazon Stock Volatility Report
+==============================================
+Standard Deviation of Daily % Change: 2.14%
+Records analysed: 250
+Date range: 2024-10-21 to 2025-10-20
