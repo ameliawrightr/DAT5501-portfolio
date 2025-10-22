@@ -1,6 +1,7 @@
 from lab07_US_election.src.us_election_analysis import (
     load_election_data,
-    plot_fraction_histogram,    
+    plot_fraction_histogram,
+    print_sanity_checks,    
 )
 
 
@@ -11,8 +12,10 @@ out_path = "lab07_US_election/artifacts/histogram_fraction_votes.png"
 df = load_election_data(csv_path)
 
 #inspect
-print(df.head())
+print(df.head(8))
 print(df.info())
+print(df["fraction_votes"].describe())
+print_sanity_checks(df)
 
 #plot histogram
 plot_fraction_histogram(df, column="fraction_votes", save_path=out_path)
