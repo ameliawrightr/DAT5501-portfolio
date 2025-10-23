@@ -31,6 +31,8 @@ Columns used:
 ## Environment & Dependencies
 Activate your venv and install:
 ```bash
+source /Users/amelia/DAT5501-portfolio/.venv/bin/activate
+
 pip install -U numpy pandas matplotlib scipy
 
 python3 -m lab07_data_fitting.scripts.run_data_fitting
