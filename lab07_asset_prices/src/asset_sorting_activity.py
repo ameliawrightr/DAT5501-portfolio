@@ -70,7 +70,7 @@ def plot_time_complexity(ns: List[int], times_ms: List[float], outpath:Path) -> 
     curve = scale * nlogn
 
     plt.figure(figsize=(10, 6))
-    plt.plot(ns, times_ms, label="Measured Sort Time (ms)")
+    plt.plot(ns, times_ms, label="Measured Sort Time (ms)", marker='o', markersize=5, linestyle="None")
     plt.plot(ns, curve, label="Scaled n log n", linestyle='--')
     plt.xlabel("Number of Price Changes (n)")
     plt.ylabel("Time (ms)")
