@@ -74,8 +74,8 @@ def calculate_std_dev(df: pd.DataFrame) -> float:
     #calculate standard deviation of daily % change
     return df['Daily % Change'].std()
 
-def save_cleaned_data(df: pd.DataFrame, outdir: Path, company_name: str = "Amazon") -> None:
+#def save_cleaned_data(df, filepath, company_name=None):
     #save cleaned dataframe to CSV
-    outpath = outdir / "data" / f"{company_name.lower()}_cleaned.csv"
-    outpath.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(outpath, index=False)
+#    filepath.parent.mkdir(parents=True, exist_ok=True)
+#    df.to_csv(filepath, index=False)
+#    print(f"Cleaned data for {company_name} saved to {filepath}")
