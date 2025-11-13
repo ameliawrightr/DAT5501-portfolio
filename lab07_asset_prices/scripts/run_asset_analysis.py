@@ -34,10 +34,6 @@ plot_daily_change(df, outdir, company_name="Amazon")
 std_dev = calculate_std_dev(df)
 print(f"Standard Deviation of Daily % Change: {std_dev:.2f}%")
 
-#save canonical cleaned CSV and use
-#cleaned_csv = data_path / "amazon_cleaned.csv"
-#save_cleaned_data(df, cleaned_csv, company_name="Amazon")
-
 #save summary result
 results_path = outdir / "results" / "summary.txt"
 with open(results_path, 'w') as f:
