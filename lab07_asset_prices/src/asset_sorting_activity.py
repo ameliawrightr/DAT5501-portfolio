@@ -110,7 +110,7 @@ def run_end_to_end(data_path: Path, outdir: Path) -> Tuple[Path,Path,Path]:
     delta.reset_index(drop=True).to_frame("Delta_P").to_csv(pricechange_csv, index=False)
     
     #plot
-    plot_path = outdir / "price_change_sorting.png"
+    plot_path = outdir / "plots" / "price_change_sorting.png"
     plot_time_complexity(ns, times_ms, plot_path)
 
     return timing_csv, pricechange_csv, plot_path
