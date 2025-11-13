@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import pandas as pd 
 import numpy as np
 
+pkg_root = Path(__file__).resolve().parents[1]
+
 #load prices
 def load_prices(data_path: Path) -> pd.DataFrame:
     #tolerated BOMs and odd encodings
@@ -68,7 +70,7 @@ def plot_time_complexity(ns: List[int], times_ms: List[float], outpath:Path) -> 
     curve = scale * nlogn
 
     plt.figure(figsize=(10, 6))
-    plt.plot(ns, times_ms, label="Measured Sort Time (ms)", marker='o')
+    plt.plot(ns, times_ms, label="Measured Sort Time (ms)")
     plt.plot(ns, curve, label="Scaled n log n", linestyle='--')
     plt.xlabel("Number of Price Changes (n)")
     plt.ylabel("Time (ms)")
@@ -102,11 +104,11 @@ def run_end_to_end(data_path: Path, outdir: Path) -> Tuple[Path,Path,Path]:
     #save timings
     outdir.mkdir(parents=True, exist_ok=True)
     timing_df = pd.DataFrame({"n": ns, "time_ms": times_ms})
-    timing_csv = outdir / "sorting_times.csv"
+    timing_csv = pkg_root / "data" / "sorting_times.csv"
     timing_df.to_csv(timing_csv, index=False)
 
     #save price change series
-    pricechange_csv = outdir / "price_changes.csv"
+    pricechange_csv = pkg_root / "data" / "price_changes.csv"
     delta.reset_index(drop=True).to_frame("Delta_P").to_csv(pricechange_csv, index=False)
     
     #plot
