@@ -3,3 +3,7 @@ def add(a, b):
         raise TypeError("Must be numbers")
     return a + b
 
+a=2
+b=3
+
+print(add(a, b))
