@@ -47,3 +47,13 @@ python -m lab04_data_pipeline.scripts.run_pipeline \
 python -m lab04_data_pipeline.scripts.run_pipeline \
   --model exponential --m 1.8 --b 0.6 --sigma-ln 0.15 \
   --n 500 --seed 22 --x-start 0 --x-stop 4 --outdir artifacts/exp
+
+#Folder structure
+- artifacts contains generated plots and csv files the plots are written from 
+- data contains the original csv data file
+- outputs contains the main line fit plot
+- scripts contains the run file
+- src contains the functions
+- tests contains the test
+
+There is also a requirements.txt file included and personal_notes.txt to be ignored. 
