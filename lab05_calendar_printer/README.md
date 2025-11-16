@@ -1,12 +1,12 @@
 # lab05 — Calendar Printer
 
-**Goal:** Ask the user how many days are in a month and which weekday it starts on, then print the month with one week per line. 
-Header must be:
+**Goal:** 
+- Ask the user how many days are in a month and which weekday it starts on, then print the month with one week per line. 
+- Header must be:
 S M T W T F S
 
 
 ## Run
-
 From the repo root:
 
 ```bash
@@ -19,3 +19,4 @@ Input examples:
 ## Notes
 - Weeks start on Sunday to match header
 - Can enter weekday as number (0-6) or name (Mon, tuesday, etc)
+
