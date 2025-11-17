@@ -118,3 +118,42 @@ plt.tight_layout()
 #save to artifacts folder
 fig.savefig(artifacts_dir / 'PLOT3_world_population_polynomial_forecasts.png', dpi=300)
 plt.close(fig)
+
+
+#chisquared per degree of freedom
+chi2_dof_results = [] #list of (degree, chi2/dof)
+
+for deg, poly in polynomials.items():
+    #model prediction on training data
+    y_model = poly(x_train)
+    #residuals
+    residuals = y_train - y_model
+    #chisquared assuming same error for every points (sigma = 1)
+    chi2 = np.sum(residuals ** 2)
+
+    #degrees of freedom = N - number_of_parameters
+    N = len(x_train)
+    p = deg + 1
+    dof = N - p
+
+    chi2_per_dof = chi2 / dof
+    chi2_dof_results.append((deg, chi2_per_dof))
+
+    print(f"Degree {deg}: chi^2 = {chi2:.3e}, dof = {dof}, chi^2/dof = {chi2_per_dof:.3e}")
+
+#PLOT 4: chi2 per dof vs polynomial degree
+
+degrees_list = [item[0] for item in chi2_dof_results]
+chi2_dof_list = [item[1] for item in chi2_dof_results]
+
+fig = plt.figure(figsize=(10, 6))
+plt.plot(degrees_list, chi2_dof_list, marker='o')
+plt.xlabel('Polynomial Degree')
+plt.ylabel(r'$\chi^2$ per Degree of Freedom')
+plt.title(r'$\chi^2$ per Degree of Freedom vs Polynomial Degree')
+plt.xticks(degrees_list)
+plt.grid(True, linestyle=':')
+
+plt.tight_layout()
+fig.savefig(artifacts_dir / 'PLOT4_chi2_per_dof_vs_polynomial_degree.png', dpi=300)
+plt.close(fig)
