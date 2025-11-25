@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+from scipy.optimize import curve_fit
 
 artifacts_dir = Path('/Users/amelia/DAT5501-portfolio/lab08_fitting_and_forecasting/artifacts')
 artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -192,6 +193,7 @@ fig.savefig(artifacts_dir / 'PLOT5_BIC_vs_polynomial_degree.png', dpi=300)
 plt.close(fig)  
 
 
+#MODEL COMPARISON SUMMARY
 #compare BIC vs chi2/dof -> pick best model
 
 #best chi2/dof - lowest
@@ -213,3 +215,105 @@ else:
     
 print(f"Using usual information criteria guidelines, the 'best' model is "
       f"the one with the lowest BIC: degree {best_deg_bic}.")
+
+
+#PARAMETER VALUES, UNCERTAINTIES, ALTERNATIVE MODEL
+#best polynomal model: parameters & covar
+
+#refit best polynomial (by BIC) ask for covariance
+best_poly_coeffs, best_poly_cov = np.polyfit(
+    x_train, y_train, best_deg_bic, cov=True
+)    
+
+print("Best polynomial model (by BIC)")
+print(f"Degree: {best_deg_bic}")
+print("Coefficients (highest power first):")
+for i, c in enumerate(best_poly_coeffs):
+    power = best_deg_bic - i
+    print(f" a_{power} = {c:.6e}")
+
+print(f"\nCovariance matrix of polynomial parameters:")
+print(best_poly_cov)
+
+#1sigma uncertainties from sqrt of diagonal of covariance matrix
+poly_param_errors = np.sqrt(np.diag(best_poly_cov))
+
+print("\n1-sigma uncertainties of polynomial parameters:")
+for i, (c, err) in enumerate(zip(poly_param_errors, best_poly_coeffs)):
+    power = best_deg_bic - i
+    rel = abs(err / c) if c != 0 else np.nan
+    print(f" a_{power}: ±{err:.3e} (relative: {rel:.3e})")
+
+
+#alternative model: exponential growth y = A * exp(k * (Year - x0))
+#shift year to keep exponent numerically stable
+x0 = x_train.mean()
+
+def exp_model(x, A, k):
+    return A * np.exp(k * (x - x0))
+
+#rough intial guess
+p0 = [y_train[0], 0.02]
+
+popt_exp, pcov_exp = curve_fit(
+    exp_model, x_train, y_train, p0=p0, maxfev=10000
+)
+A_exp, k_exp = popt_exp
+err_exp = np.sqrt(np.diag(pcov_exp))
+
+print("\nEXPONENTIAL MODEL FIT")
+print(f"Model: y = A * exp(k * (Year - {x0:.1f}))")
+print(f"Fitted parameters:")
+print(f" A = {A_exp:.6e} ± {err_exp[0]:.3e} (relative: {abs(err_exp[0] / A_exp):.3e})")
+print(f" k = {k_exp:.6e} ± {err_exp[1]:.3e} (relative: {abs(err_exp[1] / k_exp):.3e})")
+print("\nCovariance matrix for (A, k):")
+print(pcov_exp)
+
+#goodness of fit for exponential model
+y_exp_model = exp_model(x_train, *popt_exp)
+residuals_exp = y_train - y_exp_model
+chi2_exp = np.sum(residuals_exp ** 2)
+N = len(x_train)
+p_exp = 2 #A and k
+dof_exp = N - p_exp
+chi2_dof_exp = chi2_exp / dof_exp
+bic_exp = N * np.log(chi2_exp / N) + p_exp * np.log(N)
+
+print(f"\nExponential model goodness of fit:")
+print(f" chi^2 = {chi2_exp:.3e}, dof = {dof_exp}, chi^2/dof = {chi2_dof_exp:.3e}")
+print(f" BIC = {bic_exp:.3e}")
+
+#compare best polynomial vs exponential model
+print("\nCOMPARISON OF BEST POLYNOMIAL VS EXPONENTIAL MODEL")
+print(f"Best polynomial (degree {best_deg_bic}) BIC = {best_bic:.3e}")
+print(f"Exponential model BIC = {bic_exp:.3e}")
+
+if bic_exp < best_bic:
+    print("Exponential model preferred by BIC over best polynomial model.")
+else:
+    print(f"Polynomial model still preferred by (lower) BIC over exponential model."
+          f"Exponential model does not improve the fit.")
+    
+#best poly vs exp on historical data
+fig = plt.figure(figsize=(10, 6))
+
+#actual history
+plt.scatter(df['Year'], df['Population'] / 1e9, 
+            label = "Actual data", s=20, color='black')
+
+#reuse years_smooth for plotting
+plt.plot(years_smooth, best_poly(years_smooth) / 1e9,
+         label=f'Best Polynomial (deg {best_deg_bic})', color='blue')
+plt.plot(years_smooth, exp_model(years_smooth, *popt_exp) / 1e9,
+         label='Exponential Model', color='red', linestyle='--')
+
+plt.xlabel('Year')
+plt.ylabel("World Population (Billions)")
+plt.title("Best Polynomial vs Exponential Fit\nWorld Population Data (1950-2023)")
+plt.xticks(np.arange(df['Year'].min(), last_year + 5, 5))
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+fig.savefig(artifacts_dir / 'PLOT6_best_polynomial_vs_exponential_fit.png', dpi=300)
+plt.close(fig)
