@@ -221,9 +221,29 @@ print(f"Using usual information criteria guidelines, the 'best' model is "
 #best polynomal model: parameters & covar
 
 #refit best polynomial (by BIC) ask for covariance
-best_poly_coeffs, best_poly_cov = np.polyfit(
-    x_train, y_train, best_deg_bic, cov=True
-)    
+#design matrix for poly of degree best_deg_bic
+X = np.vander(x_train, best_deg_bic + 1, increasing=False) #shape (N, p)
+
+#least squares fit: y ≈ X @ coeffs
+best_poly_coeffs, residuals, rank, s = np.linalg.lstsq(X, y_train, rcond=None)
+
+best_poly = np.poly1d(best_poly_coeffs)
+
+N = len(x_train)
+p = best_deg_bic + 1
+dof_cov = N - p
+
+#estimate of variance of residuals
+if residuals.size > 0 and dof_cov > 0:
+    sigma2 = residuals[0] / dof_cov
+else:
+    #fallback if residauls array is empty
+    res = y_train - X @ best_poly_coeffs
+    sigma2 = np.sum(res ** 2) / max(dof_cov, 1)
+
+#covariance matrix of parameters
+best_poly_cov = sigma2 * np.linalg.inv(X.T @ X)
+
 
 print("Best polynomial model (by BIC)")
 print(f"Degree: {best_deg_bic}")
@@ -239,7 +259,7 @@ print(best_poly_cov)
 poly_param_errors = np.sqrt(np.diag(best_poly_cov))
 
 print("\n1-sigma uncertainties of polynomial parameters:")
-for i, (c, err) in enumerate(zip(poly_param_errors, best_poly_coeffs)):
+for i, (c, err) in enumerate(zip(best_poly_coeffs, poly_param_errors)):
     power = best_deg_bic - i
     rel = abs(err / c) if c != 0 else np.nan
     print(f" a_{power}: ±{err:.3e} (relative: {rel:.3e})")
