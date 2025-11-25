@@ -142,18 +142,19 @@ for deg, poly in polynomials.items():
     p = deg + 1
     dof = N - p
 
+    #chi2 per degree of freedom
+    chi2_per_dof = chi2 / dof
+
     #calculate bayesian information criterion (BIC)
     bic = N * np.log(chi2 / N) + p * np.log(N)
 
-    chi2_bic_results.append((deg, chi2, bic))
-    chi2_per_dof = chi2 / dof
-
-    chi2_dof_results.append((deg, chi2_per_dof / dof))
+    chi2_dof_results.append((deg, chi2_per_dof))
     chi2_bic_results.append((deg, chi2, bic))
 
     print(f"Degree {deg}: chi^2 = {chi2:.3e}, dof = {dof}, chi^2/dof = {chi2_per_dof:.3e}")
     print(f"Degree {deg}: BIC = {bic:.3e}")
     print()
+
 
 #PLOT 4: chi2 per dof vs polynomial degree
 
@@ -168,10 +169,11 @@ plt.ylabel(r'$\ chi^2$ per Degree of Freedom')
 plt.title(r'$\ chi^2$ per Degree of Freedom vs Polynomial Degree' + '\nWorld Population Data (1950-2023)')
 plt.xticks(degrees_list)
 plt.grid(True, linestyle=':')
-
 plt.tight_layout()
+
 fig.savefig(artifacts_dir / 'PLOT4_chi2_per_dof_vs_polynomial_degree.png', dpi=300)
 plt.close(fig)
+
 
 #PLOT 5: BIC vs polynomial degree
 degrees_list_bic = [item[0] for item in chi2_bic_results]
@@ -185,5 +187,29 @@ plt.title('BIC vs Polynomial Degree \nWorld Population Data (1950-2023)')
 plt.xticks(degrees_list_bic)
 plt.grid(True, linestyle=':')
 plt.tight_layout()
+
 fig.savefig(artifacts_dir / 'PLOT5_BIC_vs_polynomial_degree.png', dpi=300)
 plt.close(fig)  
+
+
+#compare BIC vs chi2/dof -> pick best model
+
+#best chi2/dof - lowest
+best_deg_chi2, best_chi2_dof = min(chi2_dof_results, key=lambda x: x[1])
+
+#best BIC - lowest
+best_deg_bic, _, best_bic = min(chi2_bic_results, key=lambda x: x[2])
+
+print("MODEL COMPARISON SUMMARY")
+print(f"Minimum chi^2/dof is for degree {best_deg_chi2}: {best_chi2_dof:.3e}")
+print(f"Minimum BIC is for degree {best_deg_bic}: {best_bic:.3e}")
+
+if best_deg_chi2 == best_deg_bic:
+    print(f"Both criteria agree on best model: degree {best_deg_bic}")
+else:
+    print(f"chi^2/dof prefers degree {best_deg_chi2}, "
+          f"while BIC prefers degree {best_deg_bic} "
+          f"(BIC penalises extra parameters more strongly).")
+    
+print(f"Using usual information criteria guidelines, the 'best' model is "
+      f"the one with the lowest BIC: degree {best_deg_bic}.")
