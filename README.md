@@ -5,13 +5,16 @@ This repository organises all labs for the **DAT5501** module in **one clean pla
 Each lab focuses on a core industry relevant data engineering skill - inclusive of Git worflows, CI pipelines, and automated testing.
 
 ## 📂 Repository Overview
-| Lab | Folder | Focus | Key Concepts |
-|-----|---------|--------|--------------|
-| **Lab 01** | `lab01_version_control/` | **Version Control** | Git fundamentals – commits, branching, merging, version history |
-| **Lab 02** | `lab02_unit_testing/` | **Unit Testing** | Test-Driven Development (TDD), `pytest`, writing and running automated tests |
-| **Lab 03** | `lab03_continuous_integration/` | **Continuous Integration (CI)** | CircleCI setup, automated builds, workflow configuration |
-| **Lab 04** | `lab04_data_pipeline/` | **Data Pipeline Development** | Modular Python scripts, reproducible results, CLI execution, JSON configs |
-| **Lab 05** | `lab05_calendar_printer/` | **Calendar Printer Utility** | Programmatic date formatting, string layout logic, unit testing edge cases |
+- `lab01_version_control/` - Git fundamentals – commits, branching, merging, version history 
+- `lab02_unit_testing/` - Test-Driven Development (TDD), `pytest`, writing and running automated tests 
+-`lab03_continuous_integration/` - CircleCI setup, automated builds, workflow configuration 
+- `lab04_data_pipeline/` - Modular Python scripts, reproducible results, CLI execution, JSON configs 
+- `lab05_calendar_printer/` - Programmatic date formatting, string layout logic, unit testing edge cases 
+- `lab06_rule_of_law_group_project/` – Rule of law index analysis and forecasting (group project).
+- `lab07_asset_prices/` – Financial time-series analysis of asset prices.
+- `lab07_data_fitting/` – Curve fitting and model comparison on real data.
+- `lab08_fitting_and_forecasting/` – Polynomial fitting and world-population forecasting.
+- `lab09_decision_tree/` – Decision-tree classification and model tuning.
 
 Each lab is **self-contained**, following a consistent folder structure: 
 labXX_name/
@@ -46,6 +49,10 @@ pip install -U pip
 for d in lab*/; do
   [ -d "$d/tests" ] && pip install -r "$d/requirements.txt" 2>/dev/null || true
   [ -d "$d/tests" ] && pytest -q "$d/tests"
+
+# 4. Run with 
+python -m labXX_name.src.<main_script>
+
 done
 ```
 
